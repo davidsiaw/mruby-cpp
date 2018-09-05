@@ -13,6 +13,7 @@
 #include <memory>
 #include "initexception.hpp"
 
+template<class TClass>
 class MRubyClass;
 
 template<typename T>
@@ -28,17 +29,31 @@ public:
 };
 
 template<>
-class MRubyTypeBinder<const char*> {
+class MRubyTypeBinder<size_t> {
 public:
-	static mrb_value to_mrb_value(mrb_state* mrb, std::string str) { return mrb_str_new(mrb, str.c_str(), str.size()); }
-	static std::string from_mrb_value(mrb_state* mrb, mrb_value val) { return std::string(RSTRING_PTR(val), RSTRING_LEN(val)); }
+	static mrb_value to_mrb_value(mrb_state* mrb, size_t i) { return mrb_fixnum_value(i); }
+	static size_t from_mrb_value(mrb_state* mrb, mrb_value val) { return mrb_fixnum(val); }
 };
 
 template<>
 class MRubyTypeBinder<std::string> {
 public:
 	static mrb_value to_mrb_value(mrb_state* mrb, std::string str) { return mrb_str_new(mrb, str.c_str(), str.size()); }
-	static std::string from_mrb_value(mrb_state* mrb, mrb_value val) { return std::string(RSTRING_PTR(val), RSTRING_LEN(val)); }
+	static std::string from_mrb_value(mrb_state* mrb, mrb_value val) 
+	{ 
+		if (val.tt == MRB_TT_SYMBOL)
+		{
+			val = mrb_sym2str(mrb, val.value.i);
+		}
+		return std::string(RSTRING_PTR(val), RSTRING_LEN(val)); 
+	}
+};
+
+template<>
+class MRubyTypeBinder<const char*> {
+public:
+	static mrb_value to_mrb_value(mrb_state* mrb, std::string str) { return MRubyTypeBinder<std::string>::to_mrb_value(mrb, str); }
+	static std::string from_mrb_value(mrb_state* mrb, mrb_value val) { return MRubyTypeBinder<std::string>::from_mrb_value(mrb, val); }
 };
 
 template<>
@@ -155,22 +170,19 @@ public:
 		RClass* submodule = mrb_define_module_under(mrb.get(), cls, name.c_str());
 		return std::make_shared<MRubyModule>(mrb, name, submodule);
 
-		//mrb_data_type type;
-		//type.dfree = MRubyObject<T>::free_object;
-		//type.struct_name = "";
-		//Data_Make_Struct(mrb.get(), )
 	}
 
-	std::shared_ptr<MRubyClass> create_class(std::string name)
+	template<typename TClass>
+	std::shared_ptr< MRubyClass<TClass> > create_class(std::string name)
 	{
 		if (cls == nullptr)
 		{
 			RClass* topclass = mrb_define_class(mrb.get(), name.c_str(), mrb->object_class);
-			return std::make_shared<MRubyClass>(mrb, name, topclass);
+			return std::make_shared<MRubyClass<TClass>>(mrb, name, topclass);
 		}
 
 		RClass* innerclass = mrb_define_class_under(mrb.get(), cls, name.c_str(), mrb->object_class);
-		return std::make_shared<MRubyClass>(mrb, name, innerclass);
+		return std::make_shared<MRubyClass<TClass>>(mrb, name, innerclass);
 	}
 
 	template<typename T>
@@ -215,47 +227,159 @@ public:
 		return MRubyTypeBinder<T>::from_mrb_value(mrb.get(), mrb_gv_set(mrb.get(), var_name_sym));
 	}
 
-	RProc* create_function(mrb_func_t func)
+
+	template<typename TFunc> 
+	struct currier;
+
+	template<typename TRet, typename TArg> 
+	struct currier< std::function<TRet(TArg)> >
 	{
-		RProc* proc = mrb_proc_new_cfunc(mrb.get(), func);
-		return proc;
+		using type = std::function<TRet(TArg)>;
+		const type result;
+
+		currier(type fun) : result(fun) {}
+	};
+
+	template<typename TRet, typename TArgHead, typename ...TArgs> 
+	struct currier< std::function<TRet(TArgHead, TArgs...)> >
+	{
+		using remaining_type = typename currier< std::function<TRet(TArgs...)> >::type;
+		using type = std::function<remaining_type(TArgHead)>;
+
+		const type result;
+
+		currier(std::function<TRet(TArgHead, TArgs...)> fun) : result(
+			[=](const TArgHead& t)
+			{
+				return currier< std::function<TRet(TArgs...)> >(
+					[=](const TArgs&... ts)
+					{
+					return fun(t, ts...);
+					}
+				).result;
+			}
+		) {}
+	};
+
+	template <typename TRet, typename ...TArgs> 
+	static auto curry(const std::function<TRet(TArgs...)> fun)
+		-> typename currier< std::function< TRet(TArgs...) > >::type
+	{
+		return currier< std::function< TRet(TArgs...) > >(fun).result;
+	}
+
+	template <typename TRet, typename ...TArgs>
+	static auto curry(TRet(* const fun)(TArgs...))
+		-> typename currier< std::function< TRet(TArgs...) > >::type
+	{
+		return currier< std::function< TRet(TArgs...) > >(fun).result;
+	}
+
+	template <int idx, typename TRet>
+	static TRet func_caller(mrb_state* mrb, TRet t, mrb_value* args)
+	{
+		return t;
+	}
+
+	template <int idx, typename TRet, typename TArgHead, typename ...TArgs>
+	static TRet func_caller(mrb_state* mrb, typename currier< std::function< TRet(TArgHead, TArgs...) > >::type fn, mrb_value* args)
+	{
+		return func_caller<idx+1, TRet, TArgs...>(
+			mrb, 
+			fn(MRubyTypeBinder<TArgHead>::from_mrb_value(mrb, args[idx]) ), 
+			args);
+	}
+
+
+	template<typename TRet, typename ... TArgs>
+	static mrb_value mruby_func_caller(mrb_state* mrb, mrb_value self)
+	{
+		typedef TRet(*func_t)(TArgs...);
+
+		RClass* cls = get_object_from<RClass*>(mrb, self);
+		mrb_value* args;
+		size_t narg = 1;
+		mrb_get_args(mrb, "*", &args, &narg);
+		mrb_sym func_ptr_sym = mrb_intern_cstr(mrb, typeid(TRet(TArgs...)).name());
+		mrb_value func_ptr_holder = mrb_mod_cv_get(mrb, cls, func_ptr_sym);
+
+		func_t func = (func_t)MRubyTypeBinder<size_t>::from_mrb_value(mrb, func_ptr_holder);
+
+		auto curried = curry(func);
+		TRet result = func_caller<0, TRet, TArgs...>(mrb, curried, args);
+		return MRubyTypeBinder<TRet>::to_mrb_value(mrb, result);
 	}
 
 
 
-	template< class Func >
-	void set_function(const char* name, Func func)
+	template<typename TRet, typename ... TArgs>
+	void create_function(std::string name, TRet(*func)(TArgs...))
 	{
-		mrb_sym func_s = mrb_intern_cstr(mrb, name);
-		mrb_value env[] = {
-			mrb_cptr_value(mrb, (void*)func),  // 0: c function pointer
-			mrb_symbol_value(func_s),          // 1: function name
-		};
-		RProc* func_proc = mrb_proc_new_cfunc_with_env(mrb, sfunc, 2, env);
-		auto kernelmod = mrb->kernel_module;
-		mrb_method_t method;
-		MRB_METHOD_FROM_PROC(method, func_proc);
-		mrb_define_method_raw(mrb, kernelmod, func_s, method);
+		const int argcount = sizeof...(TArgs);
+		RClass* module_class = mrb->kernel_module;
+		if (cls != nullptr)
+		{
+			module_class = cls;
+		}
+		mrb_sym func_ptr_sym = mrb_intern_cstr(mrb.get(), typeid(TRet(TArgs...)).name());
+		mrb_mod_cv_set(mrb.get(), module_class, func_ptr_sym, MRubyTypeBinder<size_t>::to_mrb_value(mrb.get(), (size_t)func));
+		mrb_define_module_function(mrb.get(), module_class, name.c_str(), mruby_func_caller<TRet, TArgs...>, MRB_ARGS_REQ(argcount));
+		
 	}
+
 
 };
 
+template<class TClass>
 class MRubyClass : public MRubyModule
 {
+	class MRubyNativeObject
+	{
+		std::string classname;
+		mrb_data_type datatype;
+		std::shared_ptr<TClass> instance;
+
+	public:
+		MRubyNativeObject(std::string classname, std::shared_ptr<TClass> instance) : 
+			classname(classname), 
+			instance(instance)
+		{
+			datatype.dfree = destructor;
+			datatype.struct_name = classname.c_str();
+		}
+
+		~MRubyNativeObject()
+		{
+		}
+
+		mrb_data_type* get_type_ptr()
+		{
+			return &datatype;
+		}
+	};
+
 	static void destructor(mrb_state* mrb, void* ptr)
 	{
-		printf("destructor called %x\n", ptr);
+		delete (MRubyNativeObject*)ptr;
 	}
 
 	static mrb_value constructor(mrb_state* mrb, mrb_value self)
 	{
-		mrb_data_type type;
-		type.dfree = destructor;
-		type.struct_name = "";
-		int* ptr = new int;
-		printf("new called %x\n", ptr);
-		auto obj = mrb_data_object_alloc(mrb, get_object_from<RClass*>(mrb, self), ptr, &type);
-		return get_value_from(mrb, obj);
+		RClass* cls = get_object_from<RClass*>(mrb, self);
+
+		mrb_sym nsym = mrb_intern_lit(mrb, "__classname__");
+		mrb_value nval = mrb_obj_iv_get(mrb, (struct RObject*)cls, nsym);
+		std::string str = get_object_from<std::string>(mrb, nval);
+		std::shared_ptr<TClass> instance = std::make_shared<TClass>();
+
+		MRubyNativeObject* ptr = new MRubyNativeObject(str, instance);
+
+		auto data = RDATA(self);
+
+		DATA_TYPE(self) = ptr->get_type_ptr();
+		DATA_PTR(self) = ptr;
+
+		return self;
 	}
 
 public:
@@ -263,7 +387,8 @@ public:
 	MRubyClass(std::shared_ptr<mrb_state> mrb, std::string name, RClass* cls) :
 		MRubyModule(mrb, name, cls)
 	{
-		mrb_define_class_method(mrb.get(), cls, "new", constructor, MRB_ARGS_ARG(0,0));
+		MRB_SET_INSTANCE_TT(cls, MRB_TT_DATA);
+		mrb_define_method(mrb.get(), cls, "initialize", constructor, MRB_ARGS_ARG(0,0));
 	}
 
 	~MRubyClass()
