@@ -254,7 +254,7 @@ public:
 				return currier< std::function<TRet(TArgs...)> >(
 					[=](const TArgs&... ts)
 					{
-					return fun(t, ts...);
+						return fun(t, ts...);
 					}
 				).result;
 			}
@@ -282,7 +282,10 @@ public:
 	}
 
 	template <int idx, typename TRet, typename TArgHead, typename ...TArgs>
-	static TRet func_caller(mrb_state* mrb, typename currier< std::function< TRet(TArgHead, TArgs...) > >::type fn, mrb_value* args)
+	static TRet func_caller(
+		mrb_state* mrb, 
+		typename currier< std::function< TRet(TArgHead, TArgs...) > >::type fn, 
+		mrb_value* args)
 	{
 		return func_caller<idx+1, TRet, TArgs...>(
 			mrb, 
@@ -291,27 +294,108 @@ public:
 	}
 
 
-	template<typename TRet, typename ... TArgs>
+	template <int idx, typename TArgHead>
+	static void void_func_caller(
+		mrb_state* mrb,
+		typename currier< std::function< void(TArgHead) > >::type fn,
+		mrb_value* args)
+	{
+		fn(MRubyTypeBinder<TArgHead>::from_mrb_value(mrb, args[idx]));
+	}
+
+	template <int idx, typename TArgHead, typename TArgHead2, typename ...TArgs>
+	static void void_func_caller(
+		mrb_state* mrb,
+		typename currier< std::function< void(TArgHead, TArgHead2, TArgs...) > >::type fn,
+		mrb_value* args)
+	{
+		void_func_caller<idx + 1, TArgHead2, TArgs...>(
+			mrb,
+			fn(MRubyTypeBinder<TArgHead>::from_mrb_value(mrb, args[idx])),
+			args);
+	}
+
+
+	template<typename TRet, typename TFunc, typename ... TArgs>
+	struct mruby_func_called_returner
+	{
+		mrb_value operator() (mrb_state* mrb, TFunc func, mrb_value* args)
+		{
+			auto curried = curry(func);
+			TRet result = func_caller<0, TRet, TArgs...>(mrb, curried, args);
+			return MRubyTypeBinder<TRet>::to_mrb_value(mrb, result);
+		}
+	};
+
+	template<typename TFunc, typename ... TArgs>
+	struct mruby_func_called_returner<void, TFunc, TArgs...>
+	{
+		mrb_value operator() (mrb_state* mrb, TFunc func, mrb_value* args)
+		{
+			auto curried = curry(func);
+			void_func_caller<0, TArgs...>(mrb, curried, args);
+			return mrb_nil_value();
+		}
+	};
+
+	template<typename TRet, typename TFunc>
+	struct mruby_func_called_returner<TRet, TFunc>
+	{
+		mrb_value operator() (mrb_state* mrb, TFunc func, mrb_value* args)
+		{
+			TRet result = func();
+			return MRubyTypeBinder<TRet>::to_mrb_value(mrb, result);
+		}
+	};
+
+	template<typename TFunc>
+	struct mruby_func_called_returner<void, TFunc>
+	{
+		mrb_value operator() (mrb_state* mrb, TFunc func, mrb_value* args)
+		{
+			func();
+			return mrb_nil_value();
+		}
+	};
+
+	mrb_value raise_wrong_arg_count(mrb_state *mrb, mrb_value func_name, int argc, int paramc) {
+		mrb_raisef(mrb, E_ARGUMENT_ERROR, "'%S': wrong number of arguments (%S for %S)",
+			func_name,
+			mrb_fixnum_value(argc),
+			mrb_fixnum_value(paramc));
+		return mrb_nil_value();
+	}
+
+	template< typename TRet, typename ... TArgs >
 	static mrb_value mruby_func_caller(mrb_state* mrb, mrb_value self)
 	{
 		typedef TRet(*func_t)(TArgs...);
 
 		RClass* cls = get_object_from<RClass*>(mrb, self);
 		mrb_value* args;
-		size_t narg = 1;
-		mrb_get_args(mrb, "*", &args, &narg);
-		mrb_sym func_ptr_sym = mrb_intern_cstr(mrb, typeid(TRet(TArgs...)).name());
+		size_t argc = 0;
+		mrb_get_args(mrb, "*", &args, &argc);
+
+		mrb_value kernel_val = get_value_from<RClass*>(mrb, mrb->kernel_module);
+		mrb_value nval = mrb_funcall(mrb, kernel_val, "__method__", 0);
+		std::string name = get_object_from<std::string>(mrb, nval);
+		std::string ptr_name = "__funcptr__" + get_object_from<std::string>(mrb, nval);
+
+		mrb_sym func_ptr_sym = mrb_intern_cstr(mrb, ptr_name.c_str());
 		mrb_value func_ptr_holder = mrb_mod_cv_get(mrb, cls, func_ptr_sym);
 
-		func_t func = (func_t)MRubyTypeBinder<size_t>::from_mrb_value(mrb, func_ptr_holder);
+		if (argc != sizeof...(TArgs))
+		{
 
-		auto curried = curry(func);
-		TRet result = func_caller<0, TRet, TArgs...>(mrb, curried, args);
-		return MRubyTypeBinder<TRet>::to_mrb_value(mrb, result);
+			return mrb_nil_value();
+		}
+
+		func_t func = (func_t)MRubyTypeBinder<size_t>::from_mrb_value(mrb, func_ptr_holder);
+		mruby_func_called_returner<TRet, func_t, TArgs...> fcr;
+		return fcr(mrb, func, args);
 	}
 
-
-
+	
 	template<typename TRet, typename ... TArgs>
 	void create_function(std::string name, TRet(*func)(TArgs...))
 	{
@@ -321,9 +405,19 @@ public:
 		{
 			module_class = cls;
 		}
-		mrb_sym func_ptr_sym = mrb_intern_cstr(mrb.get(), typeid(TRet(TArgs...)).name());
-		mrb_mod_cv_set(mrb.get(), module_class, func_ptr_sym, MRubyTypeBinder<size_t>::to_mrb_value(mrb.get(), (size_t)func));
-		mrb_define_module_function(mrb.get(), module_class, name.c_str(), mruby_func_caller<TRet, TArgs...>, MRB_ARGS_REQ(argcount));
+		std::string ptr_name = "__funcptr__" + name;
+		mrb_sym func_ptr_sym = mrb_intern_cstr(mrb.get(), ptr_name.c_str());
+		mrb_mod_cv_set(
+			mrb.get(), 
+			module_class, 
+			func_ptr_sym, 
+			MRubyTypeBinder<size_t>::to_mrb_value(mrb.get(), (size_t)func));
+		mrb_define_module_function(
+			mrb.get(), 
+			module_class, 
+			name.c_str(), 
+			mruby_func_caller<TRet, TArgs...>, 
+			MRB_ARGS_REQ(argcount));
 		
 	}
 
