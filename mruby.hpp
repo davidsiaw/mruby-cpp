@@ -41,6 +41,37 @@ public:
 	static std::string from_mrb_value(mrb_state* mrb, mrb_value val) { return std::string(RSTRING_PTR(val), RSTRING_LEN(val)); }
 };
 
+template<>
+class MRubyTypeBinder<RClass*> {
+public:
+	static mrb_value to_mrb_value(mrb_state* mrb, RClass* cls) { return mrb_class_find_path(mrb, cls); }
+	static RClass* from_mrb_value(mrb_state* mrb, mrb_value val) { return mrb_class(mrb, val); }
+};
+
+template<>
+class MRubyTypeBinder<RData*> {
+public:
+	static mrb_value to_mrb_value(mrb_state* mrb, RData* data) { 
+		mrb_value val = { 0 };
+		val.tt = data->tt;
+		val.value.p = data;
+		return val;
+	}
+	static RData* from_mrb_value(mrb_state* mrb, mrb_value val) { return RDATA(val); }
+};
+
+
+template<typename T>
+mrb_value get_value_from(mrb_state* mrb, T val)
+{
+	return MRubyTypeBinder<T>::to_mrb_value(mrb, val);
+}
+
+template<typename T>
+T get_object_from(mrb_state* mrb, mrb_value val)
+{
+	return MRubyTypeBinder<T>::from_mrb_value(mrb, val);
+}
 
 
 class MRubyModule
@@ -134,11 +165,11 @@ public:
 	{
 		if (cls == nullptr)
 		{
-			RClass* topclass = mrb_define_class(mrb.get(), name.c_str(), mrb->module_class);
+			RClass* topclass = mrb_define_class(mrb.get(), name.c_str(), mrb->object_class);
 			return std::make_shared<MRubyClass>(mrb, name, topclass);
 		}
 
-		RClass* innerclass = mrb_define_class_under(mrb.get(), cls, name.c_str(), mrb->module_class);
+		RClass* innerclass = mrb_define_class_under(mrb.get(), cls, name.c_str(), mrb->object_class);
 		return std::make_shared<MRubyClass>(mrb, name, innerclass);
 	}
 
@@ -183,42 +214,14 @@ public:
 		mrb_sym var_name_sym = mrb_intern_cstr(mrb.get(), name.c_str());
 		return MRubyTypeBinder<T>::from_mrb_value(mrb.get(), mrb_gv_set(mrb.get(), var_name_sym));
 	}
-};
 
-class MRubyClass : public MRubyModule
-{
-public:
-	MRubyClass(std::shared_ptr<mrb_state> mrb, std::string name, RClass* cls) :
-		MRubyModule(mrb, name, cls)
+	RProc* create_function(mrb_func_t func)
 	{
-
+		RProc* proc = mrb_proc_new_cfunc(mrb.get(), func);
+		return proc;
 	}
 
-	~MRubyClass()
-	{
 
-	}
-
-};
-
-class MRuby : public MRubyModule
-{
-
-public:
-	MRuby() : 
-		MRubyModule(std::shared_ptr<mrb_state>(mrb_open()))
-	{
-	}
-
-	~MRuby()
-	{
-		mrb_close(mrb.get());
-	}
-
-	void run(std::string code)
-	{
-		mrb_load_string(mrb.get(), code.c_str());
-	}
 
 	template< class Func >
 	void set_function(const char* name, Func func)
@@ -228,11 +231,64 @@ public:
 			mrb_cptr_value(mrb, (void*)func),  // 0: c function pointer
 			mrb_symbol_value(func_s),          // 1: function name
 		};
-		RProc* func_proc = mrb_proc_new_cfunc_with_env(mrb, func, 2, env);
+		RProc* func_proc = mrb_proc_new_cfunc_with_env(mrb, sfunc, 2, env);
 		auto kernelmod = mrb->kernel_module;
 		mrb_method_t method;
 		MRB_METHOD_FROM_PROC(method, func_proc);
 		mrb_define_method_raw(mrb, kernelmod, func_s, method);
 	}
 
+};
+
+class MRubyClass : public MRubyModule
+{
+	static void destructor(mrb_state* mrb, void* ptr)
+	{
+		printf("destructor called %x\n", ptr);
+	}
+
+	static mrb_value constructor(mrb_state* mrb, mrb_value self)
+	{
+		mrb_data_type type;
+		type.dfree = destructor;
+		type.struct_name = "";
+		int* ptr = new int;
+		printf("new called %x\n", ptr);
+		auto obj = mrb_data_object_alloc(mrb, get_object_from<RClass*>(mrb, self), ptr, &type);
+		return get_value_from(mrb, obj);
+	}
+
+public:
+
+	MRubyClass(std::shared_ptr<mrb_state> mrb, std::string name, RClass* cls) :
+		MRubyModule(mrb, name, cls)
+	{
+		mrb_define_class_method(mrb.get(), cls, "new", constructor, MRB_ARGS_ARG(0,0));
+	}
+
+	~MRubyClass()
+	{
+
+	}
+
+};
+
+
+class MRuby : public MRubyModule
+{
+
+public:
+	MRuby() : 
+		MRubyModule(std::shared_ptr<mrb_state>(mrb_open(), mrb_close))
+	{
+	}
+
+	~MRuby()
+	{
+	}
+
+	void run(std::string code)
+	{
+		mrb_load_string(mrb.get(), code.c_str());
+	}
 };
