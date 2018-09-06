@@ -570,7 +570,7 @@ public:
 
 	}
 
-	template<typename TRet, typename TClass, typename ... TArgs>
+	template<typename TRet, typename ... TArgs>
 	void bind_instance_method(std::string name, TRet(TClass::*func)(TArgs...))
 	{
 		create_function(name, func, cls, mrb_define_method);
