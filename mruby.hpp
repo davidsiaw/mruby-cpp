@@ -1,8 +1,10 @@
-#pragma once
+#ifndef __MRUBY_HPP__
+#define __MRUBY_HPP__
 
-#ifdef _WIN32
-#include <stdafx.h>
-#endif
+#include <memory>
+#include <functional>
+#include <sstream>
+#include <type_traits>
 
 #include <mruby.h>
 #include <mruby/class.h>
@@ -10,9 +12,44 @@
 #include <mruby/proc.h>
 #include <mruby/variable.h>
 #include <mruby/string.h>
-#include <memory>
-#include <type_traits>
-#include "initexception.hpp"
+
+class MRubyException
+{
+public:
+	MRubyException(const std::string&, const std::string&)
+	{}
+};
+
+template<class TClass>
+class MRubyNativeObject
+{
+	std::string classname;
+	mrb_data_type datatype;
+	std::shared_ptr<TClass> instance;
+
+public:
+	MRubyNativeObject(const std::string& classname, std::shared_ptr<TClass> instance, void(*destructor)(mrb_state*, void*) ) :
+		classname(classname),
+		instance(instance)
+	{
+		datatype.dfree = destructor;
+		datatype.struct_name = classname.c_str();
+	}
+
+	~MRubyNativeObject()
+	{
+	}
+
+	mrb_data_type* get_type_ptr()
+	{
+		return &datatype;
+	}
+
+	TClass* get_instance() const
+	{
+		return instance.get();
+	}
+};
 
 template<class TClass>
 class MRubyClass;
@@ -99,7 +136,7 @@ public:
 			return thisptr->instance();
 		}
 
-		throw InitException("Not a data type", "");
+		throw MRubyException("Not a data type", "");
 	}
 };
 
@@ -115,36 +152,136 @@ T get_object_from(mrb_state* mrb, mrb_value val)
 	return MRubyTypeBinder<T>::from_mrb_value(mrb, val);
 }
 
-template<class TClass>
-class MRubyNativeObject
+template<typename TFunc>
+struct currier;
+
+template<typename TRet, typename TArg>
+struct currier< std::function<TRet(TArg)> >
 {
-	std::string classname;
-	mrb_data_type datatype;
-	std::shared_ptr<TClass> instance;
+	using type = std::function<TRet(TArg)>;
+	const type result;
 
-public:
-	MRubyNativeObject(const std::string& classname, std::shared_ptr<TClass> instance, void(*destructor)(mrb_state*, void*) ) :
-		classname(classname),
-		instance(instance)
+	currier(type fun) : result(fun) {}
+};
+
+template<typename TRet, typename TArgHead, typename ...TArgs>
+struct currier< std::function<TRet(TArgHead, TArgs...)> >
+{
+	using remaining_type = typename currier< std::function<TRet(TArgs...)> >::type;
+	using type = std::function<remaining_type(TArgHead)>;
+
+	const type result;
+
+	currier(std::function<TRet(TArgHead, TArgs...)> fun) : result(
+		[=](const TArgHead& t)
 	{
-		datatype.dfree = destructor;
-		datatype.struct_name = classname.c_str();
+		return currier< std::function<TRet(TArgs...)> >(
+			[=](const TArgs&... ts)
+		{
+			return fun(t, ts...);
+		}
+		).result;
+
 	}
+	) {} // : result(
+};
 
-	~MRubyNativeObject()
-	{
-	}
+template <typename TRet, typename ...TArgs>
+static auto curry(const std::function<TRet(TArgs...)> fun)
+	-> typename currier< std::function< TRet(TArgs...) > >::type
+{
+	return currier< std::function< TRet(TArgs...) > >(fun).result;
+}
 
-	mrb_data_type* get_type_ptr()
-	{
-		return &datatype;
-	}
+template <typename TRet, typename ...TArgs>
+static auto curry(TRet(*const fun)(TArgs...))
+	-> typename currier< std::function< TRet(TArgs...) > >::type
+{
+	return currier< std::function< TRet(TArgs...) > >(fun).result;
+}
 
-	TClass* get_instance() const
+template <int idx, typename TRet>
+static TRet func_caller(mrb_state* mrb, TRet t, mrb_value* args)
+{
+	return t;
+}
+
+template <int idx, typename TRet, typename TArgHead, typename ...TArgs>
+static TRet func_caller(
+	mrb_state* mrb,
+	typename currier< std::function< TRet(TArgHead, TArgs...) > >::type fn,
+	mrb_value* args)
+{
+	return func_caller<idx + 1, TRet, TArgs...>(
+		mrb,
+		fn(MRubyTypeBinder<TArgHead>::from_mrb_value(mrb, args[idx])),
+		args);
+}
+
+
+template <int idx, typename TArgHead>
+static void void_func_caller(
+	mrb_state* mrb,
+	typename currier< std::function< void(TArgHead) > >::type fn,
+	mrb_value* args)
+{
+	fn(MRubyTypeBinder<TArgHead>::from_mrb_value(mrb, args[idx]));
+}
+
+template <int idx, typename TArgHead, typename TArgHead2, typename ...TArgs>
+static void void_func_caller(
+	mrb_state* mrb,
+	typename currier< std::function< void(TArgHead, TArgHead2, TArgs...) > >::type fn,
+	mrb_value* args)
+{
+	void_func_caller<idx + 1, TArgHead2, TArgs...>(
+		mrb,
+		fn(MRubyTypeBinder<TArgHead>::from_mrb_value(mrb, args[idx])),
+		args);
+}
+
+template<typename TRet, typename ... TArgs>
+struct mruby_func_called_returner
+{
+	static mrb_value call(mrb_state* mrb, std::function<TRet(TArgs...)> func, mrb_value* args)
 	{
-		return instance.get();
+		auto curried = curry(func);
+		TRet result = func_caller<0, TRet, TArgs...>(mrb, curried, args);
+		return MRubyTypeBinder<TRet>::to_mrb_value(mrb, result);
 	}
 };
+
+template<typename ... TArgs>
+struct mruby_func_called_returner<void, TArgs...>
+{
+	static mrb_value call(mrb_state* mrb, std::function<void(TArgs...)> func, mrb_value* args)
+	{
+		auto curried = curry(func);
+		void_func_caller<0, TArgs...>(mrb, curried, args);
+		return mrb_nil_value();
+	}
+};
+
+template<typename TRet>
+struct mruby_func_called_returner<TRet>
+{
+	static mrb_value call(mrb_state* mrb, std::function<TRet()> func, mrb_value* args)
+	{
+		TRet result = func();
+		return MRubyTypeBinder<TRet>::to_mrb_value(mrb, result);
+	}
+};
+
+template<>
+struct mruby_func_called_returner<void>
+{
+	static mrb_value call(mrb_state* mrb, std::function<void()> func, mrb_value* args)
+	{
+		func();
+		return mrb_nil_value();
+	}
+};
+
 
 class MRubyModule
 {
@@ -169,136 +306,6 @@ protected:
 		return mrb_nil_value();
 	}
 
-	template<typename TFunc>
-	struct currier;
-
-	template<typename TRet, typename TArg>
-	struct currier< std::function<TRet(TArg)> >
-	{
-		using type = std::function<TRet(TArg)>;
-		const type result;
-
-		currier(type fun) : result(fun) {}
-	};
-
-	template<typename TRet, typename TArgHead, typename ...TArgs>
-	struct currier< std::function<TRet(TArgHead, TArgs...)> >
-	{
-		using remaining_type = typename currier< std::function<TRet(TArgs...)> >::type;
-		using type = std::function<remaining_type(TArgHead)>;
-
-		const type result;
-
-		currier(std::function<TRet(TArgHead, TArgs...)> fun) : result(
-			[=](const TArgHead& t)
-		{
-			return currier< std::function<TRet(TArgs...)> >(
-				[=](const TArgs&... ts)
-			{
-				return fun(t, ts...);
-			}
-			).result;
-
-		}
-		) {} // : result(
-	};
-
-	template <typename TRet, typename ...TArgs>
-	static auto curry(const std::function<TRet(TArgs...)> fun)
-		-> typename currier< std::function< TRet(TArgs...) > >::type
-	{
-		return currier< std::function< TRet(TArgs...) > >(fun).result;
-	}
-
-	template <typename TRet, typename ...TArgs>
-	static auto curry(TRet(*const fun)(TArgs...))
-		-> typename currier< std::function< TRet(TArgs...) > >::type
-	{
-		return currier< std::function< TRet(TArgs...) > >(fun).result;
-	}
-
-	template <int idx, typename TRet>
-	static TRet func_caller(mrb_state* mrb, TRet t, mrb_value* args)
-	{
-		return t;
-	}
-
-	template <int idx, typename TRet, typename TArgHead, typename ...TArgs>
-	static TRet func_caller(
-		mrb_state* mrb,
-		typename currier< std::function< TRet(TArgHead, TArgs...) > >::type fn,
-		mrb_value* args)
-	{
-		return func_caller<idx + 1, TRet, TArgs...>(
-			mrb,
-			fn(MRubyTypeBinder<TArgHead>::from_mrb_value(mrb, args[idx])),
-			args);
-	}
-
-
-	template <int idx, typename TArgHead>
-	static void void_func_caller(
-		mrb_state* mrb,
-		typename currier< std::function< void(TArgHead) > >::type fn,
-		mrb_value* args)
-	{
-		fn(MRubyTypeBinder<TArgHead>::from_mrb_value(mrb, args[idx]));
-	}
-
-	template <int idx, typename TArgHead, typename TArgHead2, typename ...TArgs>
-	static void void_func_caller(
-		mrb_state* mrb,
-		typename currier< std::function< void(TArgHead, TArgHead2, TArgs...) > >::type fn,
-		mrb_value* args)
-	{
-		void_func_caller<idx + 1, TArgHead2, TArgs...>(
-			mrb,
-			fn(MRubyTypeBinder<TArgHead>::from_mrb_value(mrb, args[idx])),
-			args);
-	}
-
-
-	template<typename TRet, typename ... TArgs>
-	struct mruby_func_called_returner
-	{
-		static mrb_value call(mrb_state* mrb, std::function<TRet(TArgs...)> func, mrb_value* args)
-		{
-			auto curried = curry(func);
-			TRet result = func_caller<0, TRet, TArgs...>(mrb, curried, args);
-			return MRubyTypeBinder<TRet>::to_mrb_value(mrb, result);
-		}
-	};
-
-	template<typename ... TArgs>
-	struct mruby_func_called_returner<void, TArgs...>
-	{
-		static mrb_value call(mrb_state* mrb, std::function<void(TArgs...)> func, mrb_value* args)
-		{
-			auto curried = curry(func);
-			void_func_caller<0, TArgs...>(mrb, curried, args);
-			return mrb_nil_value();
-		}
-	};
-
-	template<typename TRet>
-	struct mruby_func_called_returner<TRet>
-	{
-		static mrb_value call(mrb_state* mrb, std::function<TRet()> func, mrb_value* args)
-		{
-			TRet result = func();
-			return MRubyTypeBinder<TRet>::to_mrb_value(mrb, result);
-		}
-	};
-
-	template<>
-	struct mruby_func_called_returner<void>
-	{
-		static mrb_value call(mrb_state* mrb, std::function<void()> func, mrb_value* args)
-		{
-			func();
-			return mrb_nil_value();
-		}
-	};
 
 
 	template< typename TRet, typename ... TArgs >
@@ -455,7 +462,7 @@ public:
 	{
 		if (!thing_is_defined(name, MRB_TT_CLASS))
 		{
-			throw InitException("Module does not exist", name);
+			throw MRubyException("Module does not exist", name);
 		}
 		RClass *theclass = NULL;
 		mrb_sym name_sym = mrb_intern_cstr(mrb.get(), name.c_str());
@@ -467,7 +474,7 @@ public:
 	{
 		if (!thing_is_defined(name, MRB_TT_MODULE))
 		{
-			throw InitException("Module does not exist", name);
+			throw MRubyException("Module does not exist", name);
 		}
 		RClass *theclass = NULL;
 		mrb_sym name_sym = mrb_intern_cstr(mrb.get(), name.c_str());
@@ -527,7 +534,7 @@ public:
 		mrb_sym var_name_sym = mrb_intern_cstr(mrb.get(), name.c_str());
 		if (cls == nullptr)
 		{
-			return MRubyTypeBinder<T>::from_mrb_value(mrb.get(), mrb_vm_iv_get(mrb.get(), var_name_sym));
+			return MRubyTypeBinder<T>::from_mrb_value(mrb.get(),  mrb_vm_iv_get(mrb.get(), var_name_sym));
 		}
 		else
 		{
@@ -546,7 +553,7 @@ public:
 	T get_global_variable(std::string name)
 	{
 		mrb_sym var_name_sym = mrb_intern_cstr(mrb.get(), name.c_str());
-		return MRubyTypeBinder<T>::from_mrb_value(mrb.get(), mrb_gv_set(mrb.get(), var_name_sym));
+		return MRubyTypeBinder<T>::from_mrb_value(mrb.get(), mrb_gv_get(mrb.get(), var_name_sym));
 	}
 
 	template<typename TRet, typename ... TArgs>
@@ -662,3 +669,5 @@ public:
 		mrb_load_string(mrb.get(), ss.str().c_str());
 	}
 };
+
+#endif // __MRUBY_HPP__
