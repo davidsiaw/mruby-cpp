@@ -45,7 +45,7 @@ lightclean:
 clean: lightclean
 	rm $(BIN_DIR)/*
 
-bigclean:
+bigclean: clean
 	cd mruby && make clean
 
 distclean: bigclean
