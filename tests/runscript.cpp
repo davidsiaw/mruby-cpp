@@ -4,5 +4,5 @@ int main()
 {
 	MRuby mruby;
 	mruby.run("p 'hello'");
-	return EXIT_FAILURE;
+	return EXIT_SUCCESS;
 }
