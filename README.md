@@ -1,5 +1,7 @@
 # mruby-cpp
 
+[![CircleCI](https://circleci.com/gh/davidsiaw/mruby-cpp.svg?style=svg)](https://circleci.com/gh/davidsiaw/mruby-cpp)
+
 This is a header-only wrapper over mruby. You still need to pull mruby into your project. That is not covered in this README.
 
 # Getting Started
