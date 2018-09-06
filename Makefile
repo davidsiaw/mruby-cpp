@@ -37,8 +37,20 @@ test: $(BINS)
 			echo "FAILED: $(file)"; fi; \
 	)
 
-clean:
+lightclean:
+	rm *.gcda
+	rm *.gcno
+	rm *.gcov
+
+clean: lightclean
 	rm $(BIN_DIR)/*
+
+bigclean:
 	cd mruby && make clean
 
-.PHONY: clean test
+distclean: bigclean
+	rm -rf mruby
+	rm -rf bin
+	rm -rf logs
+
+.PHONY: distclean clean test
