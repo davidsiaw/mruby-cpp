@@ -37,9 +37,16 @@ public:
 };
 
 template<>
+class MRubyTypeBinder<mrb_sym> {
+public:
+	static mrb_value to_mrb_value(mrb_state* mrb, mrb_sym sym) { return mrb_sym2str(mrb, sym); }
+	static mrb_sym from_mrb_value(mrb_state* mrb, mrb_value val) { return mrb_intern_str(mrb, val); }
+};
+
+template<>
 class MRubyTypeBinder<std::string> {
 public:
-	static mrb_value to_mrb_value(mrb_state* mrb, std::string str) { return mrb_str_new(mrb, str.c_str(), str.size()); }
+	static mrb_value to_mrb_value(mrb_state* mrb, const std::string& str) { return mrb_str_new(mrb, str.c_str(), str.size()); }
 	static std::string from_mrb_value(mrb_state* mrb, mrb_value val) 
 	{ 
 		if (val.tt == MRB_TT_SYMBOL)
@@ -53,7 +60,7 @@ public:
 template<>
 class MRubyTypeBinder<const char*> {
 public:
-	static mrb_value to_mrb_value(mrb_state* mrb, std::string str) { return MRubyTypeBinder<std::string>::to_mrb_value(mrb, str); }
+	static mrb_value to_mrb_value(mrb_state* mrb, const std::string& str) { return MRubyTypeBinder<std::string>::to_mrb_value(mrb, str); }
 	static std::string from_mrb_value(mrb_state* mrb, mrb_value val) { return MRubyTypeBinder<std::string>::from_mrb_value(mrb, val); }
 };
 
@@ -76,6 +83,25 @@ public:
 	static RData* from_mrb_value(mrb_state* mrb, mrb_value val) { return RDATA(val); }
 };
 
+template<class TClass>
+class MRubyTypeBinder< std::shared_ptr<TClass> > {
+public:
+	static mrb_value to_mrb_value(mrb_state* mrb, std::shared_ptr<TClass> str)
+	{
+
+	}
+
+	static std::shared_ptr<TClass> from_mrb_value(mrb_state* mrb, mrb_value val)
+	{
+		if (val.tt == MRB_TT_DATA)
+		{
+			MRubyNativeObject<TClass>* thisptr = (MRubyNativeObject<TClass>*)DATA_PTR(val);
+			return thisptr->instance();
+		}
+
+		throw InitException("Not a data type", "");
+	}
+};
 
 template<typename T>
 mrb_value get_value_from(mrb_state* mrb, T val)
@@ -89,6 +115,36 @@ T get_object_from(mrb_state* mrb, mrb_value val)
 	return MRubyTypeBinder<T>::from_mrb_value(mrb, val);
 }
 
+template<class TClass>
+class MRubyNativeObject
+{
+	std::string classname;
+	mrb_data_type datatype;
+	std::shared_ptr<TClass> instance;
+
+public:
+	MRubyNativeObject(const std::string& classname, std::shared_ptr<TClass> instance, void(*destructor)(mrb_state*, void*) ) :
+		classname(classname),
+		instance(instance)
+	{
+		datatype.dfree = destructor;
+		datatype.struct_name = classname.c_str();
+	}
+
+	~MRubyNativeObject()
+	{
+	}
+
+	mrb_data_type* get_type_ptr()
+	{
+		return &datatype;
+	}
+
+	TClass* get_instance() const
+	{
+		return instance.get();
+	}
+};
 
 class MRubyModule
 {
@@ -104,55 +160,14 @@ protected:
 
 	}
 
-	template<typename TRet, typename ... TArgs>
-	void create_function(std::string name, TRet(*func)(TArgs...), RClass* module_class, function_definer_t define_function_method)
-	{
-		const int argcount = sizeof...(TArgs);
-		std::string ptr_name = "__funcptr__" + name;
-		mrb_sym func_ptr_sym = mrb_intern_cstr(mrb.get(), ptr_name.c_str());
-		mrb_mod_cv_set(
-			mrb.get(),
-			module_class,
-			func_ptr_sym,
-			MRubyTypeBinder<size_t>::to_mrb_value(mrb.get(), (size_t)func));
-		
-		define_function_method(
-			mrb.get(),
-			module_class,
-			name.c_str(),
-			mruby_func_caller<TRet, TArgs...>,
-			MRB_ARGS_REQ(argcount));
-
+	static mrb_value error_argument_count(mrb_state *mrb, mrb_value class_name, mrb_value func_name, size_t given, size_t expected) {
+		mrb_raisef(mrb, E_ARGUMENT_ERROR, "in '%S': %S: wrong number of arguments (%S for %S)",
+			class_name,
+			func_name,
+			mrb_fixnum_value(given),
+			mrb_fixnum_value(expected));
+		return mrb_nil_value();
 	}
-
-	template<typename TRet, typename TClass, typename ... TArgs>
-	void create_function(std::string name, TRet(TClass::*func)(TArgs...), RClass* module_class, function_definer_t define_function_method)
-	{
-		typedef TRet(TClass::* memfuncptr_t)(TArgs...);
-		const int argcount = sizeof...(TArgs);
-		std::string ptr_name = "__allocated_funcptr__" + name;
-		mrb_sym func_ptr_sym = mrb_intern_cstr(mrb.get(), ptr_name.c_str());
-
-		memfuncptr_t* ptr = new memfuncptr_t;
-		*ptr = func;
-
-		mrb_mod_cv_set(
-			mrb.get(),
-			module_class,
-			func_ptr_sym,
-			MRubyTypeBinder<size_t>::to_mrb_value(mrb.get(), (size_t)ptr));
-
-		define_function_method(
-			mrb.get(),
-			module_class,
-			name.c_str(),
-			mruby_member_func_caller<TRet, TClass, TArgs...>,
-			MRB_ARGS_REQ(argcount));
-
-	}
-
-private:
-	std::string name;
 
 	template<typename TFunc>
 	struct currier;
@@ -176,15 +191,15 @@ private:
 
 		currier(std::function<TRet(TArgHead, TArgs...)> fun) : result(
 			[=](const TArgHead& t)
+		{
+			return currier< std::function<TRet(TArgs...)> >(
+				[=](const TArgs&... ts)
 			{
-				return currier< std::function<TRet(TArgs...)> >(
-					[=](const TArgs&... ts)
-					{
-						return fun(t, ts...);
-					}
-				).result;
-
+				return fun(t, ts...);
 			}
+			).result;
+
+		}
 		) {} // : result(
 	};
 
@@ -285,13 +300,6 @@ private:
 		}
 	};
 
-	mrb_value raise_wrong_arg_count(mrb_state *mrb, mrb_value func_name, int argc, int paramc) {
-		mrb_raisef(mrb, E_ARGUMENT_ERROR, "'%S': wrong number of arguments (%S for %S)",
-			func_name,
-			mrb_fixnum_value(argc),
-			mrb_fixnum_value(paramc));
-		return mrb_nil_value();
-	}
 
 	template< typename TRet, typename ... TArgs >
 	static mrb_value mruby_func_caller(mrb_state* mrb, mrb_value self)
@@ -313,8 +321,7 @@ private:
 
 		if (argc != sizeof...(TArgs))
 		{
-
-			return mrb_nil_value();
+			return error_argument_count(mrb, self, nval, argc, sizeof...(TArgs));
 		}
 
 		func_t* func = (func_t*)MRubyTypeBinder<size_t>::from_mrb_value(mrb, func_ptr_holder);
@@ -344,24 +351,74 @@ private:
 
 		if (argc != sizeof...(TArgs))
 		{
-
-			return mrb_nil_value();
+			return error_argument_count(mrb, self, nval, argc, sizeof...(TArgs));
 		}
 
 		memfuncptr_t* ptr = (memfuncptr_t*)MRubyTypeBinder<size_t>::from_mrb_value(mrb, func_ptr_holder);
 		memfuncptr_t func = *ptr;
-		TClass* thisptr = (TClass*)DATA_PTR(self);
+		MRubyNativeObject<TClass>* thisptr = (MRubyNativeObject<TClass>*)DATA_PTR(self);
 
-		auto callable = std::bind(func, thisptr);
-		
+		auto callable = std::bind(func, thisptr->get_instance());
+
 		return mruby_func_called_returner<TRet, TArgs...>::call(
-			mrb, 
-			[=](TArgs... params)->TRet 
-			{
-				return callable(params...);
-			}, 
+			mrb,
+			[=](TArgs... params)->TRet
+		{
+			return callable(params...);
+		},
 			args);
 	}
+
+	template<typename TRet, typename ... TArgs>
+	void create_function(std::string name, TRet(*func)(TArgs...), RClass* module_class, function_definer_t define_function_method)
+	{
+		const int argcount = sizeof...(TArgs);
+		std::string ptr_name = "__funcptr__" + name;
+		mrb_sym func_ptr_sym = mrb_intern_cstr(mrb.get(), ptr_name.c_str());
+		mrb_mod_cv_set(
+			mrb.get(),
+			module_class,
+			func_ptr_sym,
+			MRubyTypeBinder<size_t>::to_mrb_value(mrb.get(), (size_t)func));
+		
+		define_function_method(
+			mrb.get(),
+			module_class,
+			name.c_str(),
+			mruby_func_caller<TRet, TArgs...>,
+			MRB_ARGS_REQ(argcount));
+
+	}
+
+	template<typename TRet, typename TClass, typename ... TArgs>
+	void create_function(std::string name, TRet(TClass::*func)(TArgs...), RClass* module_class, function_definer_t define_function_method)
+	{
+		typedef TRet(TClass::* memfuncptr_t)(TArgs...);
+		const int argcount = sizeof...(TArgs);
+		std::string ptr_name = "__allocated_funcptr__" + name;
+		mrb_sym func_ptr_sym = mrb_intern_cstr(mrb.get(), ptr_name.c_str());
+
+		memfuncptr_t* ptr = new memfuncptr_t;
+		*ptr = func;
+
+		mrb_mod_cv_set(
+			mrb.get(),
+			module_class,
+			func_ptr_sym,
+			MRubyTypeBinder<size_t>::to_mrb_value(mrb.get(), (size_t)ptr));
+
+		define_function_method(
+			mrb.get(),
+			module_class,
+			name.c_str(),
+			mruby_member_func_caller<TRet, TClass, TArgs...>,
+			MRB_ARGS_REQ(argcount));
+
+	}
+
+private:
+	std::string name;
+
 
 public:
 	MRubyModule(std::shared_ptr<mrb_state> mrb, std::string name, RClass* cls) :
@@ -428,20 +485,26 @@ public:
 
 		RClass* submodule = mrb_define_module_under(mrb.get(), cls, name.c_str());
 		return std::make_shared<MRubyModule>(mrb, name, submodule);
-
 	}
 
-	template<typename TClass>
+	static constexpr void* DUMMY_VALUE_TO_PASS_TYPE_TO_CONSTRUCTOR = nullptr;
+
+	template<typename TClass, typename ... TConstructorArgs>
 	std::shared_ptr< MRubyClass<TClass> > create_class(std::string name)
 	{
+		typedef void(*typepasser_t)(TConstructorArgs...);
+
+		RClass* rubyclass = nullptr;
 		if (cls == nullptr)
 		{
-			RClass* topclass = mrb_define_class(mrb.get(), name.c_str(), mrb->object_class);
-			return std::make_shared<MRubyClass<TClass>>(mrb, name, topclass);
+			rubyclass = mrb_define_class(mrb.get(), name.c_str(), mrb->object_class);
+		}
+		else
+		{
+			rubyclass = mrb_define_class_under(mrb.get(), cls, name.c_str(), mrb->object_class);
 		}
 
-		RClass* innerclass = mrb_define_class_under(mrb.get(), cls, name.c_str(), mrb->object_class);
-		return std::make_shared<MRubyClass<TClass>>(mrb, name, innerclass);
+		return std::make_shared<MRubyClass<TClass>>(mrb, name, rubyclass, (typepasser_t)DUMMY_VALUE_TO_PASS_TYPE_TO_CONSTRUCTOR);
 	}
 
 	template<typename T>
@@ -507,36 +570,13 @@ public:
 template<class TClass>
 class MRubyClass : public MRubyModule
 {
-	class MRubyNativeObject
-	{
-		std::string classname;
-		mrb_data_type datatype;
-		std::shared_ptr<TClass> instance;
-
-	public:
-		MRubyNativeObject(std::string classname, std::shared_ptr<TClass> instance) : 
-			classname(classname), 
-			instance(instance)
-		{
-			datatype.dfree = destructor;
-			datatype.struct_name = classname.c_str();
-		}
-
-		~MRubyNativeObject()
-		{
-		}
-
-		mrb_data_type* get_type_ptr()
-		{
-			return &datatype;
-		}
-	};
 
 	static void destructor(mrb_state* mrb, void* ptr)
 	{
-		delete (MRubyNativeObject*)ptr;
+		delete (MRubyNativeObject<TClass>*)ptr;
 	}
 
+	template <typename ... TConstructorArgs>
 	static mrb_value constructor(mrb_state* mrb, mrb_value self)
 	{
 		RClass* cls = get_object_from<RClass*>(mrb, self);
@@ -544,9 +584,27 @@ class MRubyClass : public MRubyModule
 		mrb_sym nsym = mrb_intern_lit(mrb, "__classname__");
 		mrb_value nval = mrb_obj_iv_get(mrb, (struct RObject*)cls, nsym);
 		std::string str = get_object_from<std::string>(mrb, nval);
-		std::shared_ptr<TClass> instance = std::make_shared<TClass>();
 
-		MRubyNativeObject* ptr = new MRubyNativeObject(str, instance);
+		std::function<std::shared_ptr<TClass>(TConstructorArgs...)> func = 
+			[=](TConstructorArgs... params) -> std::shared_ptr<TClass>
+			{
+				return std::make_shared<TClass>(params...);
+			};
+
+
+		mrb_value* args;
+		size_t argc = 0;
+		mrb_get_args(mrb, "*", &args, &argc);
+
+		if (argc != sizeof...(TConstructorArgs))
+		{
+			return error_argument_count(mrb, self, MRubyTypeBinder<mrb_sym>::to_mrb_value(mrb, mrb_intern_cstr(mrb, "initialize")), argc, sizeof...(TConstructorArgs));
+		}
+
+		auto curried = curry(func);
+		std::shared_ptr<TClass> instance = func_caller<0, std::shared_ptr<TClass>, TConstructorArgs...>(mrb, curried, args);
+
+		MRubyNativeObject<TClass>* ptr = new MRubyNativeObject<TClass>(str, instance, &destructor);
 
 		auto data = RDATA(self);
 
@@ -558,11 +616,12 @@ class MRubyClass : public MRubyModule
 
 public:
 
-	MRubyClass(std::shared_ptr<mrb_state> mrb, std::string name, RClass* cls) :
+	template <typename ... TConstructorArgs>
+	MRubyClass(std::shared_ptr<mrb_state> mrb, std::string name, RClass* cls, void(*)(TConstructorArgs...)) :
 		MRubyModule(mrb, name, cls)
 	{
 		MRB_SET_INSTANCE_TT(cls, MRB_TT_DATA);
-		mrb_define_method(mrb.get(), cls, "initialize", constructor, MRB_ARGS_ARG(0,0));
+		mrb_define_method(mrb.get(), cls, "initialize", constructor<TConstructorArgs...>, MRB_ARGS_ARG(sizeof...(TConstructorArgs),0));
 	}
 
 	~MRubyClass()
@@ -593,6 +652,13 @@ public:
 
 	void run(std::string code)
 	{
-		mrb_load_string(mrb.get(), code.c_str());
+		std::stringstream ss;
+		ss << "begin;";
+		ss << code << ";";
+		ss << "rescue => e;";
+		ss << "p e;";
+		ss << "end;";
+
+		mrb_load_string(mrb.get(), ss.str().c_str());
 	}
 };
