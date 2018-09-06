@@ -7,7 +7,7 @@ jobs:
       - checkout
       - run:
           name: Install
-          command: 'sudo apt-get update && sudo apt-get install -y bison'
+          command: 'apt-get update && apt-get install -y bison'
       - run: make
 
 workflows:
