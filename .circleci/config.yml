@@ -7,8 +7,13 @@ jobs:
       - checkout
       - run:
           name: Install
-          command: 'apt-get update && apt-get install -y bison'
-      - run: make
+          command: 'apt-get update && apt-get install -y bison && gem install coveralls coveralls-gcov'
+      - run:
+          name: Build and Test
+          command: 'make'
+      - run:
+          name: Submit coverage report
+          command: 'coveralls-gcov send --repo-token $COVERALLS_TOKEN --root `pwd` --extension .hpp'
 
 workflows:
   version: 2
