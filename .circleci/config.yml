@@ -13,7 +13,7 @@ jobs:
           command: 'make'
       - run:
           name: Submit coverage report
-          command: 'coveralls-gcov send --repo-token $COVERALLS_TOKEN --root `pwd`' --exclude mruby --exclude tests
+          command: 'coveralls-gcov send --repo-token $COVERALLS_TOKEN --root `pwd` --exclude mruby --exclude tests'
 
 workflows:
   version: 2
