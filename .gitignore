@@ -1,0 +1,7 @@
+*.gcda
+*.gcno
+*.gcov
+logs/
+mruby/
+gcov.log
+bins/

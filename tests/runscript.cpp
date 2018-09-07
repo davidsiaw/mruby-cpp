@@ -2,7 +2,7 @@
 
 int main()
 {
-	MRuby mruby;
-	mruby.run("p 'hello'");
+	mruby::VM vm;
+	vm.run("p 'hello'");
 	return EXIT_SUCCESS;
 }
