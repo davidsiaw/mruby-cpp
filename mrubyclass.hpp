@@ -89,7 +89,6 @@ public:
 		mrb_define_method(mrb.get(), cls, "initialize", default_constructor, MRB_ARGS_ARG(0, 0));
 	}
 
-
 	~Class()
 	{
 
