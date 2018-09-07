@@ -30,7 +30,7 @@ struct TypeBinder<mrb_sym>
 template<>
 struct TypeBinder<std::string> 
 {
-	static mrb_value to_mrb_value(mrb_state* mrb, const std::string& str) { return mrb_str_new(mrb, str.c_str(), str.size()); }
+	static mrb_value to_mrb_value(mrb_state* mrb, std::string str) { return mrb_str_new(mrb, str.c_str(), str.size()); }
 	static std::string from_mrb_value(mrb_state* mrb, mrb_value val) 
 	{ 
 		if (val.tt == MRB_TT_SYMBOL)
