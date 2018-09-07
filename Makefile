@@ -13,6 +13,10 @@ BINS := $(patsubst $(TEST_DIR)/%.cpp, $(BIN_DIR)/test_%, $(TESTS))
 
 TESTCOMMAND := $(patsubst $(TEST_DIR)/%.cpp, %, $(wildcard $(TEST_DIR)/*.cpp))
 
+RED := \033[0;31m
+GREEN := \033[0;32m
+NC := \033[0m # No Color
+
 all: test
 
 mruby/minirake:
@@ -33,9 +37,9 @@ test: $(BINS)
 	@mkdir -p $(LOG_DIR)
 	@$(foreach file, $(TESTCOMMAND), \
 		if sh -c $(BIN_DIR)/test_$(file) 1> $(LOG_DIR)/$(file).stdout 2> $(LOG_DIR)/$(file).stderr; then \
-			echo "PASSED: $(file)"; \
+			echo "$(GREEN)PASSED$(NC): $(file)"; \
 		else \
-			echo "FAILED: $(file)"; fi; \
+			echo "$(RED)FAILED$(NC): $(file)"; fi; \
 	)
 	@gcov *.gcda > gcov.log
 
