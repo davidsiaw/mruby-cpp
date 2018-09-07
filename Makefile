@@ -37,7 +37,7 @@ test: $(BINS)
 		else \
 			echo "FAILED: $(file)"; fi; \
 	)
-	@gcov *.gcda > gcov.log
+	@gcov -p -s *.gcda > gcov.log
 
 lightclean:
 	rm *.gcda; rm *.gcno; rm *.gcov
