@@ -39,8 +39,6 @@ class Class : public Module
 
 		NativeObject<TClass>* ptr = new NativeObject<TClass>(str, instance, &destructor);
 
-		auto data = RDATA(self);
-
 		DATA_TYPE(self) = ptr->get_type_ptr();
 		DATA_PTR(self) = ptr;
 
@@ -68,8 +66,6 @@ class Class : public Module
 
 		NativeObject<TClass>* ptr = new NativeObject<TClass>(str, instance, &destructor);
 
-		auto data = RDATA(self);
-
 		DATA_TYPE(self) = ptr->get_type_ptr();
 		DATA_PTR(self) = ptr;
 
@@ -86,13 +82,13 @@ public:
 		mrb_define_method(mrb.get(), cls, "initialize", constructor<TConstructorArgs...>, MRB_ARGS_ARG(sizeof...(TConstructorArgs),0));
 	}
 
-	template <>
-	Class(std::shared_ptr<mrb_state> mrb, const std::string&  name, RClass* cls, void(*)()) :
+	Class(std::shared_ptr<mrb_state> mrb, const std::string&  name, RClass* cls, void(*)(void)) :
 		Module(mrb, name, cls)
 	{
 		MRB_SET_INSTANCE_TT(cls, MRB_TT_DATA);
 		mrb_define_method(mrb.get(), cls, "initialize", default_constructor, MRB_ARGS_ARG(0, 0));
 	}
+
 
 	~Class()
 	{
@@ -105,5 +101,7 @@ public:
 		create_function(name, func, cls, mrb_define_method);
 	}
 };
+
+
 
 #endif // __MRUBYCLASS_HPP__

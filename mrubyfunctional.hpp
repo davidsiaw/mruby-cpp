@@ -11,7 +11,7 @@ struct currier< std::function<TRet(TArg)> >
 	using type = std::function<TRet(TArg)>;
 	const type result;
 
-	currier(type fun) : result(fun) {}
+	currier(const type fun) : result(fun) {}
 };
 
 template<typename TRet, typename TArgHead, typename ...TArgs>
@@ -22,7 +22,7 @@ struct currier< std::function<TRet(TArgHead, TArgs...)> >
 
 	const type result;
 
-	currier(std::function<TRet(TArgHead, TArgs...)> fun) : result(
+	currier(const std::function<TRet(TArgHead, TArgs...)> fun) : result(
 		[=](const TArgHead& t)
 	{
 		return currier< std::function<TRet(TArgs...)> >(

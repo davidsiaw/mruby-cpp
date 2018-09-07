@@ -12,8 +12,8 @@ public:
 int main()
 {
 	mruby::VM vm;
-	//auto cls = vm.create_class<Cat>("Cat");
-	//cls->bind_method("meow", &Cat::meow);
-	//vm.run("$a = Cat.meow");
+	auto cls = vm.create_class<Cat>("Cat");
+	cls->bind_method("meow", &Cat::meow);
+	vm.run("$a = Cat.meow");
 	return vm.get_global_variable<int>("$a") - 500;
 }
