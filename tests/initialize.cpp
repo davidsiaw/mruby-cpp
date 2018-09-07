@@ -2,6 +2,6 @@
 
 int main()
 {
-	MRuby mruby;
+	mruby::VM vm;
 	return EXIT_SUCCESS;
 }

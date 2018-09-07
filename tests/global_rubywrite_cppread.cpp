@@ -2,7 +2,7 @@
 
 int main()
 {
-	MRuby mruby;
-	mruby.run("$a = 100;");
-	return mruby.get_global_variable<int>("$a") - 100;
+	mruby::VM vm;
+	vm.run("$a = 100;");
+	return vm.get_global_variable<int>("$a") - 100;
 }

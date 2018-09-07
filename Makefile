@@ -7,6 +7,7 @@ LOG_DIR := logs
 LIBMRUBY := mruby/build/host/lib/libmruby.a
 GITREF := 1.4.0
 
+SOURCES := $(wildcard *.hpp)
 TESTS := $(wildcard $(TEST_DIR)/*.cpp)
 BINS := $(patsubst $(TEST_DIR)/%.cpp, $(BIN_DIR)/test_%, $(TESTS))
 
@@ -24,7 +25,7 @@ $(LIBMRUBY): mruby/gitref
 	cd mruby && git checkout `cat gitref`
 	cd mruby && make
 
-$(BIN_DIR)/test_%: $(TEST_DIR)/%.cpp $(LIBMRUBY) mruby.hpp
+$(BIN_DIR)/test_%: $(TEST_DIR)/%.cpp $(LIBMRUBY) $(SOURCES)
 	@mkdir -p $(BIN_DIR)
 	$(CC) $(patsubst $(BIN_DIR)/test_%, $(TEST_DIR)/%.cpp, $@) $(CFLAGS) -o $@ $(LDFLAGS)
 
@@ -36,14 +37,13 @@ test: $(BINS)
 		else \
 			echo "FAILED: $(file)"; fi; \
 	)
+	@gcov *.gcda > gcov.log
 
 lightclean:
-	rm *.gcda
-	rm *.gcno
-	rm *.gcov
+	rm *.gcda; rm *.gcno; rm *.gcov
 
 clean: lightclean
-	rm $(BIN_DIR)/*
+	rm $(BIN_DIR)/*; rm gcov.log
 
 bigclean: clean
 	cd mruby && make clean

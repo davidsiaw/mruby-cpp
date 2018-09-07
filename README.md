@@ -1,6 +1,8 @@
 # mruby-cpp
 
-[![CircleCI](https://circleci.com/gh/davidsiaw/mruby-cpp.svg?style=svg)](https://circleci.com/gh/davidsiaw/mruby-cpp)
+
+[![CircleCI](https://circleci.com/gh/davidsiaw/mruby-cpp.svg?style=shield)](https://circleci.com/gh/davidsiaw/mruby-cpp)
+[![Coverage Status](https://coveralls.io/repos/github/davidsiaw/mruby-cpp/badge.svg?branch=master)](https://coveralls.io/github/davidsiaw/mruby-cpp?branch=master)
 
 This is a header-only wrapper over mruby. You still need to pull mruby into your project. That is not covered in this README.
 
