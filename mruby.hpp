@@ -5,6 +5,7 @@
 #include <functional>
 #include <sstream>
 #include <type_traits>
+#include <fstream>
 
 #include <mruby.h>
 #include <mruby/class.h>
@@ -377,7 +378,7 @@ protected:
 	}
 
 	template<typename TRet, typename ... TArgs>
-	void create_function(std::string name, TRet(*func)(TArgs...), RClass* module_class, function_definer_t define_function_method)
+	void create_function(const std::string& name, TRet(*func)(TArgs...), RClass* module_class, function_definer_t define_function_method)
 	{
 		const int argcount = sizeof...(TArgs);
 		std::string ptr_name = "__funcptr__" + name;
@@ -398,7 +399,7 @@ protected:
 	}
 
 	template<typename TRet, typename TClass, typename ... TArgs>
-	void create_function(std::string name, TRet(TClass::*func)(TArgs...), RClass* module_class, function_definer_t define_function_method)
+	void create_function(const std::string& name, TRet(TClass::*func)(TArgs...), RClass* module_class, function_definer_t define_function_method)
 	{
 		typedef TRet(TClass::* memfuncptr_t)(TArgs...);
 		const int argcount = sizeof...(TArgs);
@@ -428,7 +429,7 @@ private:
 
 
 public:
-	MRubyModule(std::shared_ptr<mrb_state> mrb, std::string name, RClass* cls) :
+	MRubyModule(std::shared_ptr<mrb_state> mrb, const std::string& name, RClass* cls) :
 		mrb(mrb),
 		cls(cls), 
 		name(name)
@@ -441,7 +442,7 @@ public:
 
 	}
 
-	bool thing_is_defined(std::string name, mrb_vtype type)
+	bool thing_is_defined(const std::string& name, mrb_vtype type)
 	{
 		mrb_sym name_sym = mrb_intern_cstr(mrb.get(), name.c_str());
 		if (cls == nullptr)
@@ -458,7 +459,7 @@ public:
 		return false;
 	}
 
-	std::shared_ptr<MRubyModule> get_class(std::string name)
+	std::shared_ptr<MRubyModule> get_class(const std::string& name)
 	{
 		if (!thing_is_defined(name, MRB_TT_CLASS))
 		{
@@ -470,7 +471,7 @@ public:
 		return std::make_shared<MRubyModule>(mrb, name, theclass);
 	}
 
-	std::shared_ptr<MRubyModule> get_module(std::string name)
+	std::shared_ptr<MRubyModule> get_module(const std::string& name)
 	{
 		if (!thing_is_defined(name, MRB_TT_MODULE))
 		{
@@ -482,7 +483,7 @@ public:
 		return std::make_shared<MRubyModule>(mrb, name, theclass);
 	}
 
-	std::shared_ptr<MRubyModule> create_module(std::string name)
+	std::shared_ptr<MRubyModule> create_module(const std::string& name)
 	{
 		if (cls == nullptr)
 		{
@@ -497,7 +498,7 @@ public:
 	static constexpr void* DUMMY_VALUE_TO_PASS_TYPE_TO_CONSTRUCTOR = nullptr;
 
 	template<typename TClass, typename ... TConstructorArgs>
-	std::shared_ptr< MRubyClass<TClass> > create_class(std::string name)
+	std::shared_ptr< MRubyClass<TClass> > create_class(const std::string& name)
 	{
 		typedef void(*typepasser_t)(TConstructorArgs...);
 
@@ -515,7 +516,7 @@ public:
 	}
 
 	template<typename T>
-	void set_class_variable(std::string name, T value)
+	void set_class_variable(const std::string& name, T value)
 	{
 		mrb_sym var_name_sym = mrb_intern_cstr(mrb.get(), name.c_str());
 		if (cls == nullptr)
@@ -529,7 +530,7 @@ public:
 	}
 
 	template<typename T>
-	T get_class_variable(std::string name)
+	T get_class_variable(const std::string& name)
 	{
 		mrb_sym var_name_sym = mrb_intern_cstr(mrb.get(), name.c_str());
 		if (cls == nullptr)
@@ -543,21 +544,21 @@ public:
 	}
 
 	template<typename T>
-	void set_global_variable(std::string name, T value)
+	void set_global_variable(const std::string& name, T value)
 	{
 		mrb_sym var_name_sym = mrb_intern_cstr(mrb.get(), name.c_str());
 		mrb_gv_set(mrb.get(), var_name_sym, MRubyTypeBinder<T>::to_mrb_value(mrb.get(), value));
 	}
 
 	template<typename T>
-	T get_global_variable(std::string name)
+	T get_global_variable(const std::string& name)
 	{
 		mrb_sym var_name_sym = mrb_intern_cstr(mrb.get(), name.c_str());
 		return MRubyTypeBinder<T>::from_mrb_value(mrb.get(), mrb_gv_get(mrb.get(), var_name_sym));
 	}
 
 	template<typename TRet, typename ... TArgs>
-	void bind_method(std::string name, TRet(*func)(TArgs...))
+	void bind_method(const std::string& name, TRet(*func)(TArgs...))
 	{
 		if (cls == nullptr)
 		{
@@ -624,7 +625,7 @@ class MRubyClass : public MRubyModule
 public:
 
 	template <typename ... TConstructorArgs>
-	MRubyClass(std::shared_ptr<mrb_state> mrb, std::string name, RClass* cls, void(*)(TConstructorArgs...)) :
+	MRubyClass(std::shared_ptr<mrb_state> mrb, const std::string& name, RClass* cls, void(*)(TConstructorArgs...)) :
 		MRubyModule(mrb, name, cls)
 	{
 		MRB_SET_INSTANCE_TT(cls, MRB_TT_DATA);
@@ -637,7 +638,7 @@ public:
 	}
 
 	template<typename TRet, typename ... TArgs>
-	void bind_instance_method(std::string name, TRet(TClass::*func)(TArgs...))
+	void bind_instance_method(const std::string& name, TRet(TClass::*func)(TArgs...))
 	{
 		create_function(name, func, cls, mrb_define_method);
 	}
@@ -657,7 +658,7 @@ public:
 	{
 	}
 
-	void run(std::string code)
+	void run(const std::string& code)
 	{
 		std::stringstream ss;
 		ss << "begin;";
@@ -667,6 +668,18 @@ public:
 		ss << "end;";
 
 		mrb_load_string(mrb.get(), ss.str().c_str());
+	}
+
+	void run_file(const std::string& file)
+	{
+		std::shared_ptr<mrbc_context> cxt(mrbc_context_new(mrb.get()), [=](mrbc_context* p) {mrbc_context_free(mrb.get(), p);});
+		mrbc_filename(mrb.get(), cxt.get(), file.c_str());
+
+		std::ifstream t(file);
+		std::string source((std::istreambuf_iterator<char>(t)),
+			std::istreambuf_iterator<char>());
+
+		mrb_load_nstring_cxt(mrb.get(), source.c_str(), source.length(), cxt.get());
 	}
 };
 
