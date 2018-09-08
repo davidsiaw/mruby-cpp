@@ -44,6 +44,13 @@ struct TypeBinder<int>
 };
 
 template<>
+struct TypeBinder<float>
+{
+	static mrb_value to_mrb_value(mrb_state* mrb, float f) { return mrb_float_value(mrb, f); }
+	static float from_mrb_value(mrb_state* mrb, mrb_value val) { return mrb_float(val); }
+};
+
+template<>
 struct TypeBinder<size_t> 
 {
 	static mrb_value to_mrb_value(mrb_state* mrb, size_t i) { return mrb_fixnum_value(i); }

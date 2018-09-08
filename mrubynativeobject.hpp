@@ -41,9 +41,24 @@ public:
 		return instance.get();
 	}
 
+	std::shared_ptr<TClass> get_shared_instance() const
+	{
+		return instance;
+	}
+
 	std::string get_classname() const
 	{
 		return classname;
+	}
+
+	TClass* operator->()
+	{
+		return instance.operator->();
+	}
+
+	TClass &operator*()
+	{
+		return instance.operator*();
 	}
 };
 

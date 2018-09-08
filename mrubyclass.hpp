@@ -106,6 +106,97 @@ public:
 
 	}
 
+
+	template<typename TVal, typename TClass>
+	static mrb_value mruby_member_setter(mrb_state* mrb, mrb_value self)
+	{
+		typedef TVal TClass::* memptr_t;
+		RClass* cls = TypeBinder<RClass*>::from_mrb_value(mrb, self);
+
+		mrb_value* args;
+		size_t argc = 0;
+		mrb_get_args(mrb, "*", &args, &argc);
+
+		mrb_value kernel_val = TypeBinder<RClass*>::to_mrb_value(mrb, mrb->kernel_module);
+		mrb_value nval = mrb_funcall(mrb, kernel_val, "__method__", 0);
+		std::string name = TypeBinder<std::string>::from_mrb_value(mrb, nval);
+		std::string ptr_name = "__allocated_memptr__" + name.substr(0, name.length()-1);
+
+		mrb_sym mem_ptr_sym = mrb_intern_cstr(mrb, ptr_name.c_str());
+		mrb_value mem_ptr_holder = mrb_mod_cv_get(mrb, cls, mem_ptr_sym);
+
+		if (argc != 1)
+		{
+			return error_argument_count(mrb, self, nval, argc, 1);
+		}
+
+		memptr_t* ptr = (memptr_t*)TypeBinder<size_t>::from_mrb_value(mrb, mem_ptr_holder);
+		NativeObject<TClass>* thisptr = (NativeObject<TClass>*)DATA_PTR(self);
+
+		thisptr->get_instance()->**ptr = TypeBinder<TVal>::from_mrb_value(mrb, *args);
+
+		return mrb_nil_value();
+	}
+
+	template<typename TVal, typename TClass>
+	static mrb_value mruby_member_getter(mrb_state* mrb, mrb_value self)
+	{
+		typedef TVal TClass::* memptr_t;
+		RClass* cls = TypeBinder<RClass*>::from_mrb_value(mrb, self);
+		
+		mrb_value kernel_val = TypeBinder<RClass*>::to_mrb_value(mrb, mrb->kernel_module);
+		mrb_value nval = mrb_funcall(mrb, kernel_val, "__method__", 0);
+		std::string name = TypeBinder<std::string>::from_mrb_value(mrb, nval);
+		std::string ptr_name = "__allocated_memptr__" + name;
+
+		mrb_sym mem_ptr_sym = mrb_intern_cstr(mrb, ptr_name.c_str());
+		mrb_value mem_ptr_holder = mrb_mod_cv_get(mrb, cls, mem_ptr_sym);
+
+		memptr_t* ptr = (memptr_t*)TypeBinder<size_t>::from_mrb_value(mrb, mem_ptr_holder);
+		NativeObject<TClass>* thisptr = (NativeObject<TClass>*)DATA_PTR(self);
+
+		return TypeBinder<TVal>::to_mrb_value(mrb, thisptr->get_instance()->**ptr);
+	}
+
+	template<typename TVal, typename TClass>
+	void create_accessor(const std::string& name, TVal TClass::* var, RClass* module_class)
+	{
+		typedef TVal TClass::* memptr_t;
+		std::string ptr_name = "__allocated_memptr__" + name;
+		mrb_sym mem_ptr_sym = mrb_intern_cstr(mrb.get(), ptr_name.c_str());
+
+		function_definer_t define_function_method = mrb_define_method;
+
+		memptr_t* ptr = new memptr_t;
+		*ptr = var;
+
+		mrb_mod_cv_set(
+			mrb.get(),
+			module_class,
+			mem_ptr_sym,
+			TypeBinder<size_t>::to_mrb_value(mrb.get(), (size_t)ptr));
+
+		define_function_method(
+			mrb.get(),
+			module_class,
+			name.c_str(),
+			mruby_member_getter<TVal, TClass>,
+			MRB_ARGS_REQ(0));
+
+		define_function_method(
+			mrb.get(),
+			module_class,
+			(name + "=").c_str(),
+			mruby_member_setter<TVal, TClass>,
+			MRB_ARGS_REQ(1));
+	}
+
+	template<typename TVar>
+	void bind_instance_variable(const std::string& name, TVar TClass::* var)
+	{
+		create_accessor(name, var, cls);
+	}
+
 	template<typename TRet, typename ... TArgs>
 	void bind_instance_method(const std::string& name, TRet(TClass::*func)(TArgs...))
 	{

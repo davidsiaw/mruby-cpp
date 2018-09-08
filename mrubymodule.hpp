@@ -82,12 +82,11 @@ protected:
 		}
 
 		memfuncptr_t* ptr = (memfuncptr_t*)TypeBinder<size_t>::from_mrb_value(mrb, func_ptr_holder);
-		memfuncptr_t func = *ptr;
 		NativeObject<TClass>* thisptr = (NativeObject<TClass>*)DATA_PTR(self);
 
 		auto callable = [&](TArgs... params) -> TRet
 		{
-			return (thisptr->get_instance()->*func)(params...);
+			return (thisptr->get_instance()->**ptr)(params...);
 		};
 
 		return mruby_func_called_returner<TRet, TArgs...>::call(

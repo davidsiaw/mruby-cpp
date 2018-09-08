@@ -68,7 +68,6 @@ static TRet func_caller(
 		args);
 }
 
-
 template <int idx, typename TArgHead>
 static void void_func_caller(
 	mrb_state* mrb,
