@@ -107,7 +107,7 @@ public:
 	}
 
 
-	template<typename TVal, typename TClass>
+	template<typename TVal>
 	static mrb_value mruby_member_setter(mrb_state* mrb, mrb_value self)
 	{
 		typedef TVal TClass::* memptr_t;
@@ -138,7 +138,7 @@ public:
 		return mrb_nil_value();
 	}
 
-	template<typename TVal, typename TClass>
+	template<typename TVal>
 	static mrb_value mruby_member_getter(mrb_state* mrb, mrb_value self)
 	{
 		typedef TVal TClass::* memptr_t;
@@ -158,7 +158,7 @@ public:
 		return TypeBinder<TVal>::to_mrb_value(mrb, thisptr->get_instance()->**ptr);
 	}
 
-	template<typename TVal, typename TClass>
+	template<typename TVal>
 	void create_accessor(const std::string& name, TVal TClass::* var, RClass* module_class)
 	{
 		typedef TVal TClass::* memptr_t;
@@ -180,14 +180,14 @@ public:
 			mrb.get(),
 			module_class,
 			name.c_str(),
-			mruby_member_getter<TVal, TClass>,
+			mruby_member_getter<TVal>,
 			MRB_ARGS_REQ(0));
 
 		define_function_method(
 			mrb.get(),
 			module_class,
 			(name + "=").c_str(),
-			mruby_member_setter<TVal, TClass>,
+			mruby_member_setter<TVal>,
 			MRB_ARGS_REQ(1));
 	}
 
