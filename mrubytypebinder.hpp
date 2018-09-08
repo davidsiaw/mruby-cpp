@@ -21,13 +21,6 @@ struct TypeBinder<size_t>
 };
 
 template<>
-struct TypeBinder<mrb_sym> 
-{
-	static mrb_value to_mrb_value(mrb_state* mrb, mrb_sym sym) { return mrb_sym2str(mrb, sym); }
-	static mrb_sym from_mrb_value(mrb_state* mrb, mrb_value val) { return mrb_intern_str(mrb, val); }
-};
-
-template<>
 struct TypeBinder<std::string> 
 {
 	static mrb_value to_mrb_value(mrb_state* mrb, std::string str) { return mrb_str_new(mrb, str.c_str(), str.size()); }
@@ -41,12 +34,32 @@ struct TypeBinder<std::string>
 	}
 };
 
-template<>
-struct TypeBinder<const char*> 
+template<class TClass>
+struct TypeBinder< NativeObject<TClass> >
 {
-	static mrb_value to_mrb_value(mrb_state* mrb, const std::string& str) { return TypeBinder<std::string>::to_mrb_value(mrb, str); }
-	static std::string from_mrb_value(mrb_state* mrb, mrb_value val) { return TypeBinder<std::string>::from_mrb_value(mrb, val); }
+	static mrb_value to_mrb_value(mrb_state* mrb, NativeObject<TClass> obj)
+	{
+		mrb_value v;
+		NativeObject<TClass>* objptr = new NativeObject<TClass>(obj);
+		v.value.p = objptr;
+		v.tt = MRB_TT_DATA;
+		mrb_gc_protect(mrb, v);
+		return v;
+	}
+
+	static NativeObject<TClass> from_mrb_value(mrb_state* mrb, mrb_value val)
+	{
+		if (val.tt == MRB_TT_DATA)
+		{
+			NativeObject<TClass>* thisptr = (NativeObject<TClass>*)DATA_PTR(val);
+			return *thisptr;
+		}
+
+		throw Exception("Not a data type", "");
+	}
 };
+
+/* internally used datatypes */
 
 template<>
 struct TypeBinder<RClass*> 
@@ -67,36 +80,11 @@ struct TypeBinder<RData*>
 	static RData* from_mrb_value(mrb_state* mrb, mrb_value val) { return RDATA(val); }
 };
 
-template<class TClass>
-struct TypeBinder< std::shared_ptr<TClass> > 
+template<>
+struct TypeBinder<mrb_sym>
 {
-	static mrb_value to_mrb_value(mrb_state* mrb, std::shared_ptr<TClass> str)
-	{
-		throw Exception("Class conversion not implemented yet", "");
-	}
-
-	static std::shared_ptr<TClass> from_mrb_value(mrb_state* mrb, mrb_value val)
-	{
-		if (val.tt == MRB_TT_DATA)
-		{
-			NativeObject<TClass>* thisptr = (NativeObject<TClass>*)DATA_PTR(val);
-			return thisptr->instance();
-		}
-
-		throw Exception("Not a data type", "");
-	}
+	static mrb_value to_mrb_value(mrb_state* mrb, mrb_sym sym) { return mrb_sym2str(mrb, sym); }
+	static mrb_sym from_mrb_value(mrb_state* mrb, mrb_value val) { return mrb_intern_str(mrb, val); }
 };
-
-template<typename T>
-mrb_value get_value_from(mrb_state* mrb, T val)
-{
-	return TypeBinder<T>::to_mrb_value(mrb, val);
-}
-
-template<typename T>
-T get_object_from(mrb_state* mrb, mrb_value val)
-{
-	return TypeBinder<T>::from_mrb_value(mrb, val);
-}
 
 #endif // __MRUBYTYPEBINDER_HPP__

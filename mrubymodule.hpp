@@ -34,15 +34,15 @@ protected:
 	{
 		typedef TRet(func_t)(TArgs...);
 
-		RClass* cls = get_object_from<RClass*>(mrb, self);
+		RClass* cls = TypeBinder<RClass*>::from_mrb_value(mrb, self);
 		mrb_value* args;
 		size_t argc = 0;
 		mrb_get_args(mrb, "*", &args, &argc);
 
-		mrb_value kernel_val = get_value_from<RClass*>(mrb, mrb->kernel_module);
+		mrb_value kernel_val = TypeBinder<RClass*>::to_mrb_value(mrb, mrb->kernel_module);
 		mrb_value nval = mrb_funcall(mrb, kernel_val, "__method__", 0);
-		std::string name = get_object_from<std::string>(mrb, nval);
-		std::string ptr_name = "__funcptr__" + get_object_from<std::string>(mrb, nval);
+		std::string name = TypeBinder<std::string>::from_mrb_value(mrb, nval);
+		std::string ptr_name = "__funcptr__" + TypeBinder<std::string>::from_mrb_value(mrb, nval);
 
 		mrb_sym func_ptr_sym = mrb_intern_cstr(mrb, ptr_name.c_str());
 		mrb_value func_ptr_holder = mrb_mod_cv_get(mrb, cls, func_ptr_sym);
@@ -67,7 +67,7 @@ protected:
 		size_t argc = 0;
 		mrb_get_args(mrb, "*", &args, &argc);
 
-		mrb_value kernel_val = get_value_from<RClass*>(mrb, mrb->kernel_module);
+		mrb_value kernel_val = TypeBinder<RClass*>::to_mrb_value(mrb, mrb->kernel_module);
 		mrb_value nval = mrb_funcall(mrb, kernel_val, "__method__", 0);
 		std::string name = get_object_from<std::string>(mrb, nval);
 		std::string ptr_name = "__allocated_funcptr__" + get_object_from<std::string>(mrb, nval);
