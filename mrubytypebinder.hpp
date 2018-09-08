@@ -18,13 +18,30 @@ struct TypeBinder<RClass*>
 template<>
 struct TypeBinder<RData*> 
 {
-	static mrb_value to_mrb_value(mrb_state* mrb, RData* data) { 
+	static mrb_value to_mrb_value(mrb_state* mrb, RData* data)
+	{ 
 		mrb_value val = { 0 };
 		val.tt = data->tt;
 		val.value.p = data;
 		return val;
 	}
 	static RData* from_mrb_value(mrb_state* mrb, mrb_value val) { return RDATA(val); }
+};
+
+template<>
+struct TypeBinder<RProc*>
+{
+	static mrb_value to_mrb_value(mrb_state* mrb, RProc* data)
+	{
+		mrb_value val = { 0 };
+		val.tt = data->tt;
+		val.value.p = data;
+		return val;
+	}
+	static RProc* from_mrb_value(mrb_state* mrb, mrb_value val)
+	{
+		return (RProc*)mrb_ptr(val);
+	}
 };
 
 template<>
@@ -60,7 +77,10 @@ struct TypeBinder<size_t>
 template<>
 struct TypeBinder<std::string> 
 {
-	static mrb_value to_mrb_value(mrb_state* mrb, std::string str) { return mrb_str_new(mrb, str.c_str(), str.size()); }
+	static mrb_value to_mrb_value(mrb_state* mrb, std::string str)
+	{
+		return mrb_str_new(mrb, str.c_str(), str.size());
+	}
 	static std::string from_mrb_value(mrb_state* mrb, mrb_value val) 
 	{ 
 		if (val.tt == MRB_TT_SYMBOL)
@@ -112,6 +132,25 @@ struct TypeBinder< NativeObject<TClass> >
 		}
 
 		throw Exception("Not a data type", "");
+	}
+};
+
+template<typename TFunc>
+class Function;
+template<typename TRet, typename ... TArgs>
+class Function<TRet(TArgs...)>;
+
+template<typename TRet, typename ... TArgs>
+struct TypeBinder< Function<TRet(TArgs...)> >
+{
+	static mrb_value to_mrb_value(mrb_state* mrb, Function<TRet(TArgs...)> func)
+	{
+		throw Exception("Not implemented", "");
+	}
+
+	static Function<TRet(TArgs...)> from_mrb_value(mrb_state* mrb, mrb_value val)
+	{
+		return Function<TRet(TArgs...)>(mrb, TypeBinder<RProc*>::from_mrb_value(mrb, val));
 	}
 };
 
