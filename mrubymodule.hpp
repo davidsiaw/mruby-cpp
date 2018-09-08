@@ -254,11 +254,11 @@ public:
 		mrb_sym var_name_sym = mrb_intern_cstr(mrb.get(), name.c_str());
 		if (cls == nullptr)
 		{
-			mrb_vm_iv_set(mrb.get(), var_name_sym, TypeBinder<T>::to_mrb_value(mrb, value));
+			mrb_vm_iv_set(mrb.get(), var_name_sym, TypeBinder<T>::to_mrb_value(mrb.get(), value));
 		}
 		else
 		{
-			mrb_iv_set(mrb.get(), mrb_obj_value(cls), var_name_sym, TypeBinder<T>::to_mrb_value(mrb, value));
+			mrb_iv_set(mrb.get(), mrb_obj_value(cls), var_name_sym, TypeBinder<T>::to_mrb_value(mrb.get(), value));
 		}
 	}
 
@@ -268,11 +268,11 @@ public:
 		mrb_sym var_name_sym = mrb_intern_cstr(mrb.get(), name.c_str());
 		if (cls == nullptr)
 		{
-			return TypeBinder<T>::from_mrb_value(mrb,  mrb_vm_iv_get(mrb.get(), var_name_sym));
+			return TypeBinder<T>::from_mrb_value(mrb.get(),  mrb_vm_iv_get(mrb.get(), var_name_sym));
 		}
 		else
 		{
-			return TypeBinder<T>::from_mrb_value(mrb, mrb_iv_get(mrb.get(), mrb_obj_value(cls), var_name_sym));
+			return TypeBinder<T>::from_mrb_value(mrb.get(), mrb_iv_get(mrb.get(), mrb_obj_value(cls), var_name_sym));
 		}
 	}
 
