@@ -6,6 +6,8 @@
 #include <sstream>
 #include <type_traits>
 #include <fstream>
+#include <map>
+#include <vector>
 
 #include <mruby.h>
 #include <mruby/class.h>

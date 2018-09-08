@@ -13,8 +13,13 @@ class NativeObject
 	mrb_data_type datatype;
 	std::shared_ptr<TClass> instance;
 
+	static void destructor(mrb_state* mrb, void* ptr)
+	{
+		delete (NativeObject<TClass>*)ptr;
+	}
+
 public:
-	NativeObject(const std::string& classname, std::shared_ptr<TClass> instance, void(*destructor)(mrb_state*, void*) ) :
+	NativeObject(const std::string& classname, std::shared_ptr<TClass> instance) :
 		classname(classname),
 		instance(instance)
 	{
@@ -34,6 +39,11 @@ public:
 	TClass* get_instance() const
 	{
 		return instance.get();
+	}
+
+	std::string get_classname() const
+	{
+		return classname;
 	}
 };
 

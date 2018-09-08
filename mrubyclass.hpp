@@ -4,11 +4,6 @@
 template<class TClass>
 class Class : public Module
 {
-	static void destructor(mrb_state* mrb, void* ptr)
-	{
-		delete (NativeObject<TClass>*)ptr;
-	}
-
 	template <typename ... TConstructorArgs>
 	static mrb_value constructor(mrb_state* mrb, mrb_value self)
 	{
@@ -37,7 +32,7 @@ class Class : public Module
 		auto curried = curry(func);
 		std::shared_ptr<TClass> instance = func_caller<0, std::shared_ptr<TClass>, TConstructorArgs...>(mrb, curried, args);
 
-		NativeObject<TClass>* ptr = new NativeObject<TClass>(str, instance, &destructor);
+		NativeObject<TClass>* ptr = new NativeObject<TClass>(str, instance);
 
 		DATA_TYPE(self) = ptr->get_type_ptr();
 		DATA_PTR(self) = ptr;
@@ -64,7 +59,7 @@ class Class : public Module
 
 		std::shared_ptr<TClass> instance = std::make_shared<TClass>();
 
-		NativeObject<TClass>* ptr = new NativeObject<TClass>(str, instance, &destructor);
+		NativeObject<TClass>* ptr = new NativeObject<TClass>(str, instance);
 
 		DATA_TYPE(self) = ptr->get_type_ptr();
 		DATA_PTR(self) = ptr;
