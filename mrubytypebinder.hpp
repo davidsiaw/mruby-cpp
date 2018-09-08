@@ -54,6 +54,13 @@ struct TypeBinder<mrb_sym>
 /* public data types */
 
 template<>
+struct TypeBinder<bool>
+{
+	static mrb_value to_mrb_value(mrb_state* mrb, bool b) { return mrb_bool_value(b); }
+	static bool from_mrb_value(mrb_state* mrb, mrb_value val) { return mrb_bool(val); }
+};
+
+template<>
 struct TypeBinder<int> 
 {
 	static mrb_value to_mrb_value(mrb_state* mrb, int i) { return mrb_fixnum_value(i); }
