@@ -89,9 +89,9 @@ protected:
 		return mruby_func_called_returner<TRet, TArgs...>::call(
 			mrb,
 			[=](TArgs... params)->TRet
-		{
-			return callable(params...);
-		},
+			{
+				return callable(params...);
+			},
 			args);
 	}
 
@@ -227,6 +227,22 @@ public:
 		}
 
 		return std::make_shared<Class<TClass>>(mrb, name, rubyclass, (typepasser_t)DUMMY_VALUE_TO_PASS_TYPE_TO_CONSTRUCTOR);
+	}
+
+	template<typename TClass>
+	std::shared_ptr< Class<TClass> > create_closed_class(const std::string& name)
+	{
+		RClass* rubyclass = nullptr;
+		if (cls == nullptr)
+		{
+			rubyclass = mrb_define_class(mrb.get(), name.c_str(), mrb->object_class);
+		}
+		else
+		{
+			rubyclass = mrb_define_class_under(mrb.get(), cls, name.c_str(), mrb->object_class);
+		}
+
+		return std::make_shared<Class<TClass>>(mrb, name, rubyclass);
 	}
 
 	template<typename T>

@@ -67,6 +67,16 @@ class Class : public Module
 		return self;
 	}
 
+	static mrb_value error_constructor_closed(mrb_state *mrb, mrb_value class_name) {
+		mrb_raisef(mrb, E_ARGUMENT_ERROR, "'%S' cannot be created with new",
+			class_name);
+		return mrb_nil_value();
+	}
+
+	static mrb_value closed_constructor(mrb_state* mrb, mrb_value self)
+	{
+		return error_constructor_closed(mrb, self);
+	}
 public:
 
 	template <typename ... TConstructorArgs>
@@ -84,6 +94,13 @@ public:
 		mrb_define_method(mrb.get(), cls, "initialize", default_constructor, MRB_ARGS_ARG(0, 0));
 	}
 
+	Class(std::shared_ptr<mrb_state> mrb, const std::string&  name, RClass* cls) :
+		Module(mrb, name, cls)
+	{
+		MRB_SET_INSTANCE_TT(cls, MRB_TT_DATA);
+		mrb_define_method(mrb.get(), cls, "initialize", closed_constructor, MRB_ARGS_ARG(0, 0));
+	}
+
 	~Class()
 	{
 
@@ -94,6 +111,7 @@ public:
 	{
 		create_function(name, func, cls, mrb_define_method);
 	}
+
 };
 
 

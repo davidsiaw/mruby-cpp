@@ -64,6 +64,20 @@ struct TypeBinder<std::string>
 	}
 };
 
+template<>
+struct TypeBinder<const std::string&>
+{
+	static mrb_value to_mrb_value(mrb_state* mrb, const std::string& str) { return mrb_str_new(mrb, str.c_str(), str.size()); }
+	static std::string from_mrb_value(mrb_state* mrb, mrb_value val)
+	{
+		if (val.tt == MRB_TT_SYMBOL)
+		{
+			val = mrb_sym2str(mrb, val.value.i);
+		}
+		return std::string(RSTRING_PTR(val), RSTRING_LEN(val));
+	}
+};
+
 // TODO
 // add specializations for
 // Array type
