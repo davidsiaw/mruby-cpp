@@ -6,6 +6,36 @@ struct TypeBinder
 {
 };
 
+/* internally used datatypes */
+
+template<>
+struct TypeBinder<RClass*> 
+{
+	static mrb_value to_mrb_value(mrb_state* mrb, RClass* cls) { return mrb_class_find_path(mrb, cls); }
+	static RClass* from_mrb_value(mrb_state* mrb, mrb_value val) { return mrb_class(mrb, val); }
+};
+
+template<>
+struct TypeBinder<RData*> 
+{
+	static mrb_value to_mrb_value(mrb_state* mrb, RData* data) { 
+		mrb_value val = { 0 };
+		val.tt = data->tt;
+		val.value.p = data;
+		return val;
+	}
+	static RData* from_mrb_value(mrb_state* mrb, mrb_value val) { return RDATA(val); }
+};
+
+template<>
+struct TypeBinder<mrb_sym>
+{
+	static mrb_value to_mrb_value(mrb_state* mrb, mrb_sym sym) { return mrb_sym2str(mrb, sym); }
+	static mrb_sym from_mrb_value(mrb_state* mrb, mrb_value val) { return mrb_intern_str(mrb, val); }
+};
+
+/* public data types */
+
 template<>
 struct TypeBinder<int> 
 {
@@ -34,17 +64,19 @@ struct TypeBinder<std::string>
 	}
 };
 
+// TODO
+// add specializations for
+// Array type
+// Hash type 
+// We might need more than just std::map or std::vector, since objects can be any type.
+
 template<class TClass>
 struct TypeBinder< NativeObject<TClass> >
 {
 	static mrb_value to_mrb_value(mrb_state* mrb, NativeObject<TClass> obj)
 	{
-		mrb_value v;
-
 		RClass* cls = mrb_class_get(mrb, obj.get_classname().c_str());
-
 		NativeObject<TClass>* objptr = new NativeObject<TClass>(obj);
-
 		RData* data = mrb_data_object_alloc(mrb, cls, objptr, objptr->get_type_ptr());
 
 		return TypeBinder<RData*>::to_mrb_value(mrb, data);
@@ -60,34 +92,6 @@ struct TypeBinder< NativeObject<TClass> >
 
 		throw Exception("Not a data type", "");
 	}
-};
-
-/* internally used datatypes */
-
-template<>
-struct TypeBinder<RClass*> 
-{
-	static mrb_value to_mrb_value(mrb_state* mrb, RClass* cls) { return mrb_class_find_path(mrb, cls); }
-	static RClass* from_mrb_value(mrb_state* mrb, mrb_value val) { return mrb_class(mrb, val); }
-};
-
-template<>
-struct TypeBinder<RData*> 
-{
-	static mrb_value to_mrb_value(mrb_state* mrb, RData* data) { 
-		mrb_value val = { 0 };
-		val.tt = data->tt;
-		val.value.p = data;
-		return val;
-	}
-	static RData* from_mrb_value(mrb_state* mrb, mrb_value val) { return RDATA(val); }
-};
-
-template<>
-struct TypeBinder<mrb_sym>
-{
-	static mrb_value to_mrb_value(mrb_state* mrb, mrb_sym sym) { return mrb_sym2str(mrb, sym); }
-	static mrb_sym from_mrb_value(mrb_state* mrb, mrb_value val) { return mrb_intern_str(mrb, val); }
 };
 
 #endif // __MRUBYTYPEBINDER_HPP__

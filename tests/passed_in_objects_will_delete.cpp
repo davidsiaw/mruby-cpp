@@ -12,17 +12,14 @@ public:
 mruby::NativeObject<Cat> testmakeobj()
 {
 	auto ptr = std::make_shared<Cat>();
-	return mruby::NativeObject<Cat>("Cat", ptr,
-		[](mrb_state* mrb, void* p) 
-		{
-			delete (mruby::NativeObject<Cat>*)p; 
-		});
+	return mruby::NativeObject<Cat>("Cat", ptr);
 }
 
 int main()
 {
 	{
 		mruby::VM vm;
+		vm.create_class<Cat>("Cat");
 		vm.bind_method("testmakeobj", testmakeobj);
 		vm.run("$a = testmakeobj");
 	}
