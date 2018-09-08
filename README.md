@@ -24,16 +24,18 @@ Its that simple!
 
 # Using
 
-### Create an instance of mruby
+### Create an instance of the mruby VM
 
 ```c++
-MRuby mruby;
+mruby::VM vm;
 ```
 
 ### Run a script
 
 ```c++
-mruby.run("puts 'hello world!'");
+vm.run("puts 'hello world!'");
+
+# hello world!
 ```
 
 ### Add a function
@@ -44,8 +46,10 @@ int myfunction(int a, int b)
 	return a+b;
 }
 
-mruby.bind_method("myfunction", myfunction);
-mruby.run("p myfunction 5,6")
+vm.bind_method("myfunction", myfunction);
+vm.run("p myfunction 5,6")
+
+# 11
 ```
 
 # Testing
