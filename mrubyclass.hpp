@@ -12,11 +12,11 @@ class Class : public Module
 	template <typename ... TConstructorArgs>
 	static mrb_value constructor(mrb_state* mrb, mrb_value self)
 	{
-		RClass* cls = get_object_from<RClass*>(mrb, self);
+		RClass* cls = TypeBinder<RClass*>::from_mrb_value(mrb, self);
 
 		mrb_sym nsym = mrb_intern_lit(mrb, "__classname__");
 		mrb_value nval = mrb_obj_iv_get(mrb, (struct RObject*)cls, nsym);
-		std::string str = get_object_from<std::string>(mrb, nval);
+		std::string str = TypeBinder<std::string>::from_mrb_value(mrb, nval);
 
 		std::function<std::shared_ptr<TClass>(TConstructorArgs...)> func = 
 			[=](TConstructorArgs... params) -> std::shared_ptr<TClass>
@@ -47,11 +47,11 @@ class Class : public Module
 
 	static mrb_value default_constructor(mrb_state* mrb, mrb_value self)
 	{
-		RClass* cls = get_object_from<RClass*>(mrb, self);
+		RClass* cls = TypeBinder<RClass*>::from_mrb_value(mrb, self);
 
 		mrb_sym nsym = mrb_intern_lit(mrb, "__classname__");
 		mrb_value nval = mrb_obj_iv_get(mrb, (struct RObject*)cls, nsym);
-		std::string str = get_object_from<std::string>(mrb, nval);
+		std::string str = TypeBinder<std::string>::from_mrb_value(mrb, nval);
 		
 		mrb_value* args;
 		size_t argc = 0;
