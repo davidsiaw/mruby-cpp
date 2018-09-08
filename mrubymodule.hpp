@@ -57,6 +57,7 @@ protected:
 		return mruby_func_called_returner<TRet, TArgs...>::call(mrb, func_obj, args);
 	}
 
+
 	template< typename TRet, typename TClass, typename ... TArgs >
 	static mrb_value mruby_member_func_caller(mrb_state* mrb, mrb_value self)
 	{
@@ -84,7 +85,10 @@ protected:
 		memfuncptr_t func = *ptr;
 		NativeObject<TClass>* thisptr = (NativeObject<TClass>*)DATA_PTR(self);
 
-		auto callable = std::bind(func, thisptr->get_instance());
+		auto callable = [&](TArgs... params) -> TRet
+		{
+			return (thisptr->get_instance()->*func)(params...);
+		};
 
 		return mruby_func_called_returner<TRet, TArgs...>::call(
 			mrb,
