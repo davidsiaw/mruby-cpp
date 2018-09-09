@@ -163,6 +163,11 @@ public:
 
 	}
 
+	mrb_sym symbol(const std::string& str)
+	{
+		return mrb_intern_cstr(mrb.get(), str.c_str());
+	}
+
 	bool thing_is_defined(const std::string& name, mrb_vtype type)
 	{
 		mrb_sym name_sym = mrb_intern_cstr(mrb.get(), name.c_str());
