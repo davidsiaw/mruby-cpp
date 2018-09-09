@@ -138,7 +138,7 @@ struct TypeBinder< NativeObject<TClass> >
 			return *thisptr;
 		}
 
-		throw Exception("Not a data type", "");
+		throw TypeError("Not a data type", "");
 	}
 };
 
@@ -152,7 +152,7 @@ struct TypeBinder< Function<TRet(TArgs...)> >
 {
 	static mrb_value to_mrb_value(mrb_state* mrb, Function<TRet(TArgs...)> func)
 	{
-		throw Exception("Not implemented", "");
+		throw NotImplementedError("Not implemented", "");
 	}
 
 	static Function<TRet(TArgs...)> from_mrb_value(mrb_state* mrb, mrb_value val)

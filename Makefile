@@ -35,12 +35,16 @@ $(BIN_DIR)/test_%: $(TEST_DIR)/%.cpp $(LIBMRUBY) $(SOURCES)
 
 test: $(BINS)
 	@mkdir -p $(LOG_DIR)
+	@rm -f fail
 	@$(foreach file, $(TESTCOMMAND), \
 		if sh -c $(BIN_DIR)/test_$(file) 1> $(LOG_DIR)/$(file).stdout 2> $(LOG_DIR)/$(file).stderr; then \
 			echo "$(GREEN)PASSED$(NC): $(file)"; \
 		else \
-			echo "$(RED)FAILED$(NC): $(file)"; fi; \
+			echo "$(RED)FAILED$(NC): $(file)"; \
+			echo fail > fail; \
+		fi; \
 	)
+	@if [ -f ./fail ]; then echo "Test failures detected!"; exit 1; fi;
 	@gcov *.gcda > gcov.log
 
 lightclean:
