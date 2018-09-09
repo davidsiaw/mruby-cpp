@@ -184,7 +184,7 @@ public:
 	{
 		if (!thing_is_defined(name, MRB_TT_CLASS))
 		{
-			throw Exception("Module does not exist", name);
+			throw NameError("Class does not exist", name);
 		}
 		RClass *theclass = NULL;
 		return std::make_shared<Module>(mrb, name, theclass);
@@ -194,7 +194,7 @@ public:
 	{
 		if (!thing_is_defined(name, MRB_TT_MODULE))
 		{
-			throw Exception("Module does not exist", name);
+			throw NameError("Module does not exist", name);
 		}
 		RClass *theclass = NULL;
 		return std::make_shared<Module>(mrb, name, theclass);
