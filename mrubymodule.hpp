@@ -163,6 +163,11 @@ public:
 
 	}
 
+	mrb_sym symbol(const std::string& str)
+	{
+		return mrb_intern_cstr(mrb.get(), str.c_str());
+	}
+
 	bool thing_is_defined(const std::string& name, mrb_vtype type)
 	{
 		mrb_sym name_sym = mrb_intern_cstr(mrb.get(), name.c_str());
@@ -184,7 +189,7 @@ public:
 	{
 		if (!thing_is_defined(name, MRB_TT_CLASS))
 		{
-			throw Exception("Module does not exist", name);
+			throw NameError("Class does not exist", name);
 		}
 		RClass *theclass = NULL;
 		return std::make_shared<Module>(mrb, name, theclass);
@@ -194,7 +199,7 @@ public:
 	{
 		if (!thing_is_defined(name, MRB_TT_MODULE))
 		{
-			throw Exception("Module does not exist", name);
+			throw NameError("Module does not exist", name);
 		}
 		RClass *theclass = NULL;
 		return std::make_shared<Module>(mrb, name, theclass);

@@ -29,6 +29,7 @@ public:
 
 	~NativeObject()
 	{
+		//printf("NativeObject<%s> %p deleted\n", typeid(TClass).name(), this);
 	}
 
 	mrb_data_type* get_type_ptr()
