@@ -48,10 +48,10 @@ test: $(BINS)
 	@gcov *.gcda > gcov.log
 
 lightclean:
-	rm *.gcda; rm *.gcno; rm *.gcov
+	rm -f *.gcda *.gcno *.gcov
 
 clean: lightclean
-	rm $(BIN_DIR)/*; rm gcov.log
+	rm -f $(BIN_DIR)/* gcov.log
 
 bigclean: clean
 	cd mruby && make clean
