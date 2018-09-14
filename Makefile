@@ -33,19 +33,29 @@ $(BIN_DIR)/test_%: $(TEST_DIR)/%.cpp $(LIBMRUBY) $(SOURCES)
 	@mkdir -p $(BIN_DIR)
 	$(CC) $(patsubst $(BIN_DIR)/test_%, $(TEST_DIR)/%.cpp, $@) $(CFLAGS) -o $@ $(LDFLAGS)
 
-test: $(BINS)
+runtest: $(BINS)
 	@mkdir -p $(LOG_DIR)
 	@rm -f fail
+	@rm -f pcount
+	@rm -f fcount
+	@echo "" > pcount
+	@echo "" > fcount
 	@$(foreach file, $(TESTCOMMAND), \
 		if sh -c $(BIN_DIR)/test_$(file) 1> $(LOG_DIR)/$(file).stdout 2> $(LOG_DIR)/$(file).stderr; then \
 			echo "$(GREEN)PASSED$(NC): $(file)"; \
+			sed -i '$$ s/$$/pass /' pcount; \
 		else \
 			echo "$(RED)FAILED$(NC): $(file)"; \
 			echo fail > fail; \
+			sed -i '$$ s/$$/fail /' fcount; \
 		fi; \
 	)
-	@if [ -f ./fail ]; then echo "Test failures detected!"; exit 1; fi;
+
+test: runtest
+	@echo $(words $(shell cat pcount)) "passed"
+	@echo $(words $(shell cat fcount)) "failures"
 	@gcov *.gcda > gcov.log
+	@if [ -f fail ]; then echo "Test failures detected!"; exit 1; fi;
 
 lightclean:
 	rm -f *.gcda *.gcno *.gcov
@@ -61,4 +71,4 @@ distclean: bigclean
 	rm -rf bin
 	rm -rf logs
 
-.PHONY: distclean clean test
+.PHONY: distclean clean test runtest
