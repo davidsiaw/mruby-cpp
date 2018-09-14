@@ -21,9 +21,7 @@ protected:
 	std::string error;
 };
 
-// TODO
-// For now, defining these exceptions that occur outside the VM
-// Will want to separate the exceptions that occur outside from inside
+// Exceptions that occur outside the VM
 
 class NameError : public Exception
 {
@@ -46,6 +44,45 @@ class TypeError : public Exception
 public:
 	TypeError(const std::string &msg, const std::string &name)
 		: Exception("TypeError", msg, name)
+	{ }
+};
+
+// Exceptions that occur inside the VM
+
+class RubyException : public std::exception
+{
+public:
+	RubyException(const std::string &type, const std::string &msg)
+	{
+		std::stringstream s;
+		s << type << " in C binding: " << msg;
+		error = s.str();
+	}
+	const char *what() const noexcept
+	{
+		return error.c_str();
+	}
+protected:
+	std::string error;
+};
+
+class RubyStandardError : public RubyException
+{
+public:
+	RubyStandardError(const std::string &msg)
+		: RubyException("StandardError", msg)
+	{ }
+protected:
+	RubyStandardError(const std::string &type, const std::string &msg)
+		: RubyException(type, msg)
+	{ }
+};
+
+class RubyRuntimeError : public RubyStandardError
+{
+public:
+	RubyRuntimeError(const std::string &msg)
+		: RubyStandardError("RuntimeError", msg)
 	{ }
 };
 
