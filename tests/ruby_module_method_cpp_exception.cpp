@@ -13,13 +13,13 @@ int main()
 	module->bind_method("number", number);
 
 	std::string script =	"$b = 0"
-							"\nbegin"
-							"\n  $b = Animals.number"
-							"\nrescue RuntimeError => e"
-							"\n  if e.message == 'RuntimeError in C binding: in module method'"
-							"\n    $b = 1000"
-							"\n  end"
-							"\nend";
+						"\n""begin"
+						"\n""  $b = Animals.number"
+						"\n""rescue RuntimeError => e"
+						"\n""  if e.message == 'RuntimeError in C binding: in module method'"
+						"\n""    $b = 1000"
+						"\n""  end"
+						"\n""end";
 	vm.run(script);
 	return vm.get_global_variable<int>("$b") - 1000;
 }

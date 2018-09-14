@@ -22,14 +22,14 @@ int main()
 	cls->bind_instance_method("meow", &Cat::meow);
 
 	std::string script = 	"$b = 0"
-							"\nbegin"
-							"\n  $a = Cat.new(10)"
-							"\n  $b = $a.meow"
-							"\nrescue RuntimeError => e"
-							"\n  if e.message == 'RuntimeError in C binding: in class instance method'"
-							"\n    $b = 1000"
-							"\n  end"
-							"\nend";
+						"\n""begin"
+						"\n""  $a = Cat.new(10)"
+						"\n""  $b = $a.meow"
+						"\n""rescue RuntimeError => e"
+						"\n""  if e.message == 'RuntimeError in C binding: in class instance method'"
+						"\n""    $b = 1000"
+						"\n""  end"
+						"\n""end";
 	vm.run(script);
 	return vm.get_global_variable<int>("$b") - 1000;
 }

@@ -15,13 +15,13 @@ int main()
 	auto cls = vm.create_class<Cat>("Cat");
 
 	std::string script = 	"$b = 0"
-							"\nbegin"
-							"\n  $b = Cat.new"
-							"\nrescue RuntimeError => e"
-							"\n  if e.message == 'RuntimeError in C binding: in class default constructor'"
-							"\n    $b = 1000"
-							"\n  end"
-							"\nend";
+						"\n""begin"
+						"\n""  $b = Cat.new"
+						"\n""rescue RuntimeError => e"
+						"\n""  if e.message == 'RuntimeError in C binding: in class default constructor'"
+						"\n""    $b = 1000"
+						"\n""  end"
+						"\n""end";
 	vm.run(script);
 	return vm.get_global_variable<int>("$b") - 1000;
 }
