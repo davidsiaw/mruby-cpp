@@ -52,10 +52,15 @@ public:
 class RubyException : public std::exception
 {
 public:
+	RubyException()
+		: error("Exception in C binding")
+	{ }
 	RubyException(const std::string &type, const std::string &msg)
 	{
 		std::stringstream s;
-		s << type << " in C binding: " << msg;
+		s << type << " in C binding";
+		if (msg != "")
+			s << ": " << msg;
 		error = s.str();
 	}
 	const char *what() const noexcept
@@ -69,7 +74,7 @@ protected:
 class RubyStandardError : public RubyException
 {
 public:
-	RubyStandardError(const std::string &msg)
+	RubyStandardError(const std::string &msg="")
 		: RubyException("StandardError", msg)
 	{ }
 protected:
@@ -81,7 +86,7 @@ protected:
 class RubyRuntimeError : public RubyStandardError
 {
 public:
-	RubyRuntimeError(const std::string &msg)
+	RubyRuntimeError(const std::string &msg="")
 		: RubyStandardError("RuntimeError", msg)
 	{ }
 };
