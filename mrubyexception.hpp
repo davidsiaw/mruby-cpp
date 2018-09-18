@@ -60,7 +60,9 @@ public:
 		std::stringstream s;
 		s << type << " in C binding";
 		if (msg != "")
+		{
 			s << ": " << msg;
+		}
 		error = s.str();
 	}
 	const char *what() const noexcept
