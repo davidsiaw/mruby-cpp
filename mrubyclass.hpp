@@ -205,6 +205,4 @@ public:
 
 };
 
-
-
 #endif // __MRUBYCLASS_HPP__
