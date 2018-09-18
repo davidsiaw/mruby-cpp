@@ -203,14 +203,6 @@ public:
 		create_function(name, func, cls, mrb_define_method);
 	}
 
-	template<typename TRet, typename ... TArgs>
-	void bind_instance_method(const std::string& name, TRet(TClass::*func)(TArgs...) const)
-	{
-		create_function(name, func, cls, mrb_define_method);
-	}
-
 };
-
-
 
 #endif // __MRUBYCLASS_HPP__
