@@ -54,7 +54,15 @@ protected:
 
 		func_t* func = (func_t*)TypeBinder<size_t>::from_mrb_value(mrb, func_ptr_holder);
 		std::function<func_t> func_obj(func);
-		return mruby_func_called_returner<TRet, TArgs...>::call(mrb, func_obj, args);
+		try
+		{
+			return mruby_func_called_returner<TRet, TArgs...>::call(mrb, func_obj, args);
+		}
+		catch (const RubyException &e)
+		{
+			mrb_raise(mrb, E_RUNTIME_ERROR, e.what());
+		}
+		return mrb_nil_value();
 	}
 
 
@@ -84,18 +92,26 @@ protected:
 		memfuncptr_t* ptr = (memfuncptr_t*)TypeBinder<size_t>::from_mrb_value(mrb, func_ptr_holder);
 		NativeObject<TClass>* thisptr = (NativeObject<TClass>*)DATA_PTR(self);
 
-		auto callable = [&](TArgs... params) -> TRet
+		try
 		{
-			return (thisptr->get_instance()->**ptr)(params...);
-		};
-
-		return mruby_func_called_returner<TRet, TArgs...>::call(
-			mrb,
-			[=](TArgs... params)->TRet
+			auto callable = [&](TArgs... params) -> TRet
 			{
-				return callable(params...);
-			},
-			args);
+				return (thisptr->get_instance()->**ptr)(params...);
+			};
+
+			return mruby_func_called_returner<TRet, TArgs...>::call(
+				mrb,
+				[=](TArgs... params)->TRet
+				{
+					return callable(params...);
+				},
+				args);
+		}
+		catch (const RubyException &e)
+		{
+			mrb_raise(mrb, E_RUNTIME_ERROR, e.what());
+		}
+		return mrb_nil_value();
 	}
 
 	template<typename TRet, typename ... TArgs>
