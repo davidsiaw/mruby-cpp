@@ -61,7 +61,7 @@ lightclean:
 	rm -f *.gcda *.gcno *.gcov
 
 clean: lightclean
-	rm -f $(BIN_DIR)/* gcov.log
+	rm -f $(BIN_DIR)/* gcov.log pcount fcount
 
 bigclean: clean
 	cd mruby && make clean
