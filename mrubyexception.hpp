@@ -23,10 +23,18 @@ protected:
 
 // Exceptions that occur outside the VM
 
+class RuntimeError : public Exception
+{
+public:
+	RuntimeError(const std::string &msg, const std::string &name="")
+		: Exception("RuntimeError", msg, name)
+	{ }
+};
+
 class NameError : public Exception
 {
 public:
-	NameError(const std::string &msg, const std::string &name)
+	NameError(const std::string &msg, const std::string &name="")
 		: Exception("NameError", msg, name)
 	{ }
 };
@@ -34,7 +42,7 @@ public:
 class NotImplementedError : public Exception
 {
 public:
-	NotImplementedError(const std::string &msg, const std::string &name)
+	NotImplementedError(const std::string &msg, const std::string &name="")
 		: Exception("NotImplementedError", msg, name)
 	{ }
 };
@@ -42,7 +50,7 @@ public:
 class TypeError : public Exception
 {
 public:
-	TypeError(const std::string &msg, const std::string &name)
+	TypeError(const std::string &msg, const std::string &name="")
 		: Exception("TypeError", msg, name)
 	{ }
 };

@@ -15,6 +15,7 @@
 #include <mruby/proc.h>
 #include <mruby/variable.h>
 #include <mruby/string.h>
+#include <mruby/array.h>
 
 #include <mrubydefines.hpp>
 
@@ -23,6 +24,8 @@ MRUBY_NAMESPACE_BEGIN
 #include <mrubyexception.hpp>
 #include <mrubynativeobject.hpp>
 #include <mrubytypebinder.hpp>
+#include <mrubynativearray.hpp>
+#include <mrubynativearraytypebinder.hpp>
 #include <mrubyfunction.hpp>
 #include <mrubyfunctional.hpp>
 #include <mrubymodule.hpp>
