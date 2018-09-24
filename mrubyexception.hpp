@@ -23,6 +23,14 @@ protected:
 
 // Exceptions that occur outside the VM
 
+class RuntimeError : public Exception
+{
+public:
+	RuntimeError(const std::string &msg, const std::string &name="")
+		: Exception("RuntimeError", msg, name)
+	{ }
+};
+
 class NameError : public Exception
 {
 public:
