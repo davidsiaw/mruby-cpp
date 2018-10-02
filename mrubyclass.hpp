@@ -30,7 +30,15 @@ class Class : public Module
 		}
 
 		auto curried = curry(func);
-		std::shared_ptr<TClass> instance = func_caller<0, std::shared_ptr<TClass>, TConstructorArgs...>(mrb, curried, args);
+		std::shared_ptr<TClass> instance;
+		try
+		{
+			instance = func_caller<0, std::shared_ptr<TClass>, TConstructorArgs...>(mrb, curried, args);
+		}
+		catch (const RubyException &e)
+		{
+			mrb_raise(mrb, E_RUNTIME_ERROR, e.what());
+		}
 
 		NativeObject<TClass>* ptr = new NativeObject<TClass>(str, instance);
 
@@ -57,7 +65,15 @@ class Class : public Module
 			return error_argument_count(mrb, self, TypeBinder<mrb_sym>::to_mrb_value(mrb, mrb_intern_cstr(mrb, "initialize")), argc, 0);
 		}
 
-		std::shared_ptr<TClass> instance = std::make_shared<TClass>();
+		std::shared_ptr<TClass> instance;
+		try
+		{
+			instance = std::make_shared<TClass>();
+		}
+		catch (const RubyException &e)
+		{
+			mrb_raise(mrb, E_RUNTIME_ERROR, e.what());
+		}
 
 		NativeObject<TClass>* ptr = new NativeObject<TClass>(str, instance);
 
