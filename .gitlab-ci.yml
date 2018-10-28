@@ -1,7 +1,7 @@
 before_script:
   - ruby -v
   - apk update
-  - apk add build-base bison
+  - apk add build-base bison git
   - which ruby
   - gem install bundler coveralls specific_install --no-ri --no-rdoc
   - gem specific_install https://github.com/davidsiaw/coveralls-gcov
