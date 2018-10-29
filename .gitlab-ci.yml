@@ -11,8 +11,6 @@ test:
     - ruby
   script:
     - make
-    - 'coveralls-gcov send --repo-token $COVERALLS_TOKEN --root `pwd` --exclude mruby --exclude tests']
+    - 'coveralls-gcov send --repo-token $COVERALLS_TOKEN --root `pwd` --exclude mruby --exclude tests'
     - tail gcov.log -n 1
-  coverage:
-    - '/^Lines executed *: *(\d+\.\d+%) of/'
-
+  coverage: '/^Lines executed *: *(\d+\.\d+%) of/'
