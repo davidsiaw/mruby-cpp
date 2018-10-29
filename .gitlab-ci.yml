@@ -3,14 +3,11 @@ before_script:
   - apk update
   - apk add build-base bison git curl
   - which ruby
-  - gem install bundler coveralls specific_install --no-ri --no-rdoc
-  - gem specific_install https://github.com/davidsiaw/coveralls-gcov
 
 test:
   tags:
     - ruby
   script:
     - make
-    - 'coveralls-gcov send --repo-token $COVERALLS_TOKEN --root `pwd` --exclude mruby --exclude tests'
     - tail gcov.log -n 1
   coverage: '/^Lines executed *: *(\d+\.\d+%) of/'
