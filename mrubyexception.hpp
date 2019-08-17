@@ -47,8 +47,15 @@ public:
 	{ }
 };
 
-// Exceptions that occur inside the VM
+class ArgumentError : public Exception
+{
+public:
+	ArgumentError(const std::string &msg, const std::string &name)
+		: Exception("ArgumentError", msg, name)
+	{ }
+};
 
+// Exceptions that occur inside the VM
 class RubyException : public std::exception
 {
 public:
@@ -92,5 +99,4 @@ public:
 		: RubyStandardError("RuntimeError", msg)
 	{ }
 };
-
 #endif // __MRUBYEXCEPTION_HPP__

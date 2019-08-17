@@ -24,15 +24,15 @@ struct currier< std::function<TRet(TArgHead, TArgs...)> >
 
 	currier(const std::function<TRet(TArgHead, TArgs...)> fun) : result(
 		[=](const TArgHead& t)
-	{
-		return currier< std::function<TRet(TArgs...)> >(
-			[=](const TArgs&... ts)
 		{
-			return fun(t, ts...);
-		}
-		).result;
+			return currier< std::function<TRet(TArgs...)> >(
+				[=](const TArgs&... ts)
+				{
+					return fun(t, ts...);
+				}
+			).result;
 
-	}
+		}
 	) {} // : result(
 };
 
