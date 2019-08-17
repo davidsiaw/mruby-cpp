@@ -5,7 +5,7 @@ TEST_DIR := tests
 BIN_DIR := bins
 LOG_DIR := logs
 LIBMRUBY := mruby/build/host/lib/libmruby.a
-GITREF := 1.4.0
+GITREF := master
 
 SOURCES := $(wildcard *.hpp)
 TESTS := $(wildcard $(TEST_DIR)/*.cpp)
