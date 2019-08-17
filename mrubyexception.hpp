@@ -49,4 +49,11 @@ public:
 	{ }
 };
 
+class ArgumentError : public Exception
+{
+public:
+	ArgumentError(const std::string &msg, const std::string &name)
+		: Exception("ArgumentError", msg, name)
+	{ }
+};
 #endif // __MRUBYEXCEPTION_HPP__

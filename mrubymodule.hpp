@@ -27,8 +27,6 @@ protected:
 		return mrb_nil_value();
 	}
 
-
-
 	template< typename TRet, typename ... TArgs >
 	static mrb_value mruby_func_caller(mrb_state* mrb, mrb_value self)
 	{
