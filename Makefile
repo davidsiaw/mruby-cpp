@@ -33,6 +33,11 @@ $(BIN_DIR)/test_%: $(TEST_DIR)/%.cpp $(LIBMRUBY) $(SOURCES)
 	@mkdir -p $(BIN_DIR)
 	$(CC) $(patsubst $(BIN_DIR)/test_%, $(TEST_DIR)/%.cpp, $@) $(CFLAGS) -o $@ $(LDFLAGS)
 
+test_%: $(BIN_DIR)/test_%
+	@mkdir -p $(BIN_DIR)
+	$(BIN_DIR)/$@
+
+
 runtest: $(BINS)
 	@mkdir -p $(LOG_DIR)
 	@rm -f fail

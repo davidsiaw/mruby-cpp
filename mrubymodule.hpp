@@ -273,6 +273,34 @@ public:
 		mrb_sym var_name_sym = mrb_intern_cstr(mrb.get(), name.c_str());
 		if (cls == nullptr)
 		{
+			mrb_cv_set(mrb.get(), mrb_obj_value(mrb->object_class), var_name_sym, TypeBinder<T>::to_mrb_value(mrb.get(), value));
+		}
+		else
+		{
+			mrb_cv_set(mrb.get(), mrb_obj_value(cls), var_name_sym, TypeBinder<T>::to_mrb_value(mrb.get(), value));
+		}
+	}
+
+	template<typename T>
+	T get_class_variable(const std::string& name)
+	{
+		mrb_sym var_name_sym = mrb_intern_cstr(mrb.get(), name.c_str());
+		if (cls == nullptr)
+		{
+			return TypeBinder<T>::from_mrb_value(mrb.get(), mrb_cv_get(mrb.get(), mrb_obj_value(mrb->object_class), var_name_sym));
+		}
+		else
+		{
+			return TypeBinder<T>::from_mrb_value(mrb.get(), mrb_cv_get(mrb.get(), mrb_obj_value(cls), var_name_sym));
+		}
+	}
+
+	template<typename T>
+	void set_instance_variable(const std::string& name, T value)
+	{
+		mrb_sym var_name_sym = mrb_intern_cstr(mrb.get(), name.c_str());
+		if (cls == nullptr)
+		{
 			mrb_iv_set(mrb.get(), mrb_obj_value(mrb->top_self), var_name_sym, TypeBinder<T>::to_mrb_value(mrb.get(), value));
 		}
 		else
@@ -282,7 +310,7 @@ public:
 	}
 
 	template<typename T>
-	T get_class_variable(const std::string& name)
+	T get_instance_variable(const std::string& name)
 	{
 		mrb_sym var_name_sym = mrb_intern_cstr(mrb.get(), name.c_str());
 		if (cls == nullptr)

@@ -112,5 +112,4 @@ public:
 		mrb_funcall_argv(mrb, TypeBinder<RProc*>::to_mrb_value(mrb, proc), call, 0, &no);
 	}
 };
-
 #endif // __MRUBYFUNCTION_HPP__
