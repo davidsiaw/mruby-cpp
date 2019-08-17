@@ -1,0 +1,13 @@
+before_script:
+  - ruby -v
+  - apk update
+  - apk add build-base bison git curl
+  - which ruby
+
+test:
+  tags:
+    - ruby
+  script:
+    - make
+    - tail gcov.log -n 1
+  coverage: '/^Lines executed *: *(\d+\.\d+%) of/'

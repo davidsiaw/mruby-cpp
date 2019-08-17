@@ -5,3 +5,4 @@ logs/
 mruby/
 gcov.log
 bins/
+tests/
