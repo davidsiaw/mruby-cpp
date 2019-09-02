@@ -15,7 +15,6 @@ protected:
 	Module(std::shared_ptr<mrb_state> mrb) :
 		Module(mrb, "", nullptr)
 	{
-
 	}
 
 	static mrb_value error_argument_count(mrb_state *mrb, mrb_value class_name, mrb_value func_name, size_t given, size_t expected) {
@@ -130,7 +129,6 @@ protected:
 			name.c_str(),
 			mruby_func_caller<TRet, TArgs...>,
 			MRB_ARGS_REQ(argcount));
-
 	}
 
 	template<typename TRet, typename TClass, typename ... TArgs>
@@ -159,6 +157,31 @@ protected:
 
 	}
 
+	template<typename TRet, typename TClass, typename ... TArgs>
+	void create_function(const std::string& name, TRet(TClass::*func)(TArgs...) const, RClass* module_class, function_definer_t define_function_method)
+	{
+		typedef TRet(TClass::* memfuncptr_t)(TArgs...) const;
+		const int argcount = sizeof...(TArgs);
+		std::string ptr_name = "__allocated_funcptr__" + name;
+		mrb_sym func_ptr_sym = mrb_intern_cstr(mrb.get(), ptr_name.c_str());
+
+		memfuncptr_t* ptr = new memfuncptr_t;
+		*ptr = func;
+
+		mrb_mod_cv_set(
+			mrb.get(),
+			module_class,
+			func_ptr_sym,
+			TypeBinder<size_t>::to_mrb_value(mrb.get(), (size_t)ptr));
+
+		define_function_method(
+			mrb.get(),
+			module_class,
+			name.c_str(),
+			mruby_member_func_caller<TRet, TClass, TArgs...>,
+			MRB_ARGS_REQ(argcount));
+
+	}
 private:
 	std::string name;
 

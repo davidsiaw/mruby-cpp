@@ -3,10 +3,12 @@
 
 class VM : public Module
 {
-
 public:
-	VM() : 
-		Module(std::shared_ptr<mrb_state>(mrb_open(), mrb_close))
+	VM() : Module(std::shared_ptr<mrb_state>(mrb_open(), mrb_close))
+	{
+	}
+
+	VM(mrb_state* mrb) : Module(std::shared_ptr<mrb_state>(mrb, [](mrb_state*) {}))
 	{
 	}
 

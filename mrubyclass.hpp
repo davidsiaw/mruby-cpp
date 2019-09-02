@@ -213,12 +213,14 @@ public:
 		create_accessor(name, var, cls);
 	}
 
+#ifndef _MSC_VER
 	template<typename TC2, typename TVar>
 	void bind_instance_variable(const std::string& name, TVar TC2::* var)
 	{
 		static_assert(std::is_base_of<TC2, TClass>::value, "You must provide a member variable that is somewhere up the inheritance chain of this class");
 		create_accessor(name, (TVar TClass::*)(var), cls);
 	}
+#endif
 
 	template<typename TRet, typename ... TArgs>
 	void bind_instance_method(const std::string& name, TRet(TClass::*func)(TArgs...))
@@ -232,6 +234,7 @@ public:
 		create_function(name, func, cls, mrb_define_method);
 	}
 
+#ifndef _MSC_VER
 	template<typename TC2, typename TRet, typename ... TArgs>
 	void bind_instance_method(const std::string& name, TRet(TC2::*func)(TArgs...))
 	{
@@ -239,6 +242,7 @@ public:
 		typedef TRet(TClass::*TTarget)(TArgs...);
 		create_function(name, (TTarget)func, cls, mrb_define_method);
 	}
+#endif
 };
 
 #endif // __MRUBYCLASS_HPP__

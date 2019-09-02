@@ -68,10 +68,24 @@ struct TypeBinder<int>
 };
 
 template<>
+struct TypeBinder<int64_t>
+{
+	static mrb_value to_mrb_value(mrb_state* mrb, int64_t i) { return mrb_fixnum_value(i); }
+	static int64_t from_mrb_value(mrb_state* mrb, mrb_value val) { return mrb_fixnum(val); }
+};
+
+template<>
 struct TypeBinder<float>
 {
 	static mrb_value to_mrb_value(mrb_state* mrb, float f) { return mrb_float_value(mrb, f); }
 	static float from_mrb_value(mrb_state* mrb, mrb_value val) { return mrb_float(val); }
+};
+
+template<>
+struct TypeBinder<double>
+{
+	static mrb_value to_mrb_value(mrb_state* mrb, double f) { return mrb_float_value(mrb, f); }
+	static double from_mrb_value(mrb_state* mrb, mrb_value val) { return mrb_float(val); }
 };
 
 template<>
@@ -95,6 +109,20 @@ struct TypeBinder<std::string>
 			val = mrb_sym2str(mrb, val.value.i);
 		}
 		return std::string(RSTRING_PTR(val), RSTRING_LEN(val)); 
+	}
+};
+
+template<>
+struct TypeBinder<const std::string>
+{
+	static mrb_value to_mrb_value(mrb_state* mrb, const std::string str) { return mrb_str_new(mrb, str.c_str(), str.size()); }
+	static std::string from_mrb_value(mrb_state* mrb, mrb_value val)
+	{
+		if (val.tt == MRB_TT_SYMBOL)
+		{
+			val = mrb_sym2str(mrb, val.value.i);
+		}
+		return std::string(RSTRING_PTR(val), RSTRING_LEN(val));
 	}
 };
 
