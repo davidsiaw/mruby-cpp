@@ -26,9 +26,9 @@ class Arena
 	int arena_idx;
 	
 public:
-	Arena(mrb_state* mrbstate) : mrb(mrb)
+	Arena(mrb_state* mrb) : mrb(mrb)
 	{
-		arena_idx = mrb_gc_arena_save(mrbstate);
+		arena_idx = mrb_gc_arena_save(mrb);
 	}
 
 	~Arena()
