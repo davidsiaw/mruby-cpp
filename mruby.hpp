@@ -21,6 +21,7 @@
 MRUBY_NAMESPACE_BEGIN
 
 #include <mrubyexception.hpp>
+#include <mrubyarena.hpp>
 #include <mrubynativeobject.hpp>
 #include <mrubytypebinder.hpp>
 #include <mrubyfunction.hpp>

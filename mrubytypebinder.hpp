@@ -100,7 +100,10 @@ struct TypeBinder<std::string>
 {
 	static mrb_value to_mrb_value(mrb_state* mrb, std::string str)
 	{
-		return mrb_str_new(mrb, str.c_str(), str.size());
+		Arena arena(mrb);
+		{
+			return mrb_str_new(mrb, str.c_str(), str.size());
+		}
 	}
 	static std::string from_mrb_value(mrb_state* mrb, mrb_value val) 
 	{ 
@@ -115,7 +118,13 @@ struct TypeBinder<std::string>
 template<>
 struct TypeBinder<const std::string>
 {
-	static mrb_value to_mrb_value(mrb_state* mrb, const std::string str) { return mrb_str_new(mrb, str.c_str(), str.size()); }
+	static mrb_value to_mrb_value(mrb_state* mrb, const std::string str)
+	{
+		Arena arena(mrb);
+		{
+			return mrb_str_new(mrb, str.c_str(), str.size());
+		}
+	}
 	static std::string from_mrb_value(mrb_state* mrb, mrb_value val)
 	{
 		if (val.tt == MRB_TT_SYMBOL)
@@ -129,7 +138,13 @@ struct TypeBinder<const std::string>
 template<>
 struct TypeBinder<const std::string&>
 {
-	static mrb_value to_mrb_value(mrb_state* mrb, const std::string& str) { return mrb_str_new(mrb, str.c_str(), str.size()); }
+	static mrb_value to_mrb_value(mrb_state* mrb, const std::string& str)
+	{
+		Arena arena(mrb);
+		{
+			return mrb_str_new(mrb, str.c_str(), str.size());
+		}
+	}
 	static std::string from_mrb_value(mrb_state* mrb, mrb_value val)
 	{
 		if (val.tt == MRB_TT_SYMBOL)
@@ -151,11 +166,14 @@ struct TypeBinder< NativeObject<TClass> >
 {
 	static mrb_value to_mrb_value(mrb_state* mrb, NativeObject<TClass> obj)
 	{
-		RClass* cls = mrb_class_get(mrb, obj.get_classname().c_str());
-		NativeObject<TClass>* objptr = new NativeObject<TClass>(obj);
-		RData* data = mrb_data_object_alloc(mrb, cls, objptr, objptr->get_type_ptr());
+		Arena arena(mrb);
+		{
+			RClass* cls = mrb_class_get(mrb, obj.get_classname().c_str());
+			NativeObject<TClass>* objptr = new NativeObject<TClass>(obj);
+			RData* data = mrb_data_object_alloc(mrb, cls, objptr, objptr->get_type_ptr());
 
-		return TypeBinder<RData*>::to_mrb_value(mrb, data);
+			return TypeBinder<RData*>::to_mrb_value(mrb, data);
+		}
 	}
 
 	static NativeObject<TClass> from_mrb_value(mrb_state* mrb, mrb_value val)

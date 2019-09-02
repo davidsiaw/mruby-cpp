@@ -1,7 +1,6 @@
 #ifndef __MRUBYFUNCTIONAL_HPP__
 #define __MRUBYFUNCTIONAL_HPP__
 
-
 template<typename TFunc>
 struct currier;
 
