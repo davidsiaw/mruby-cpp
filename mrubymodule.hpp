@@ -86,7 +86,9 @@ protected:
 			return error_argument_count(mrb, self, nval, argc, sizeof...(TArgs));
 		}
 
-		memfuncptr_t* ptr = (memfuncptr_t*)TypeBinder<size_t>::from_mrb_value(mrb, func_ptr_holder);
+		NativeObject<memfuncptr_t> obj = TypeBinder< NativeObject<memfuncptr_t> >::from_mrb_value(mrb, func_ptr_holder);
+
+		memfuncptr_t* ptr = obj.get_instance();
 		NativeObject<TClass>* thisptr = (NativeObject<TClass>*)DATA_PTR(self);
 
 		try
@@ -141,12 +143,13 @@ protected:
 
 		memfuncptr_t* ptr = new memfuncptr_t;
 		*ptr = func;
+		NativeObject<memfuncptr_t> obj("Object", std::shared_ptr<memfuncptr_t>(ptr));
 
 		mrb_mod_cv_set(
 			mrb.get(),
 			module_class,
 			func_ptr_sym,
-			TypeBinder<size_t>::to_mrb_value(mrb.get(), (size_t)ptr));
+			TypeBinder< NativeObject<memfuncptr_t> >::to_mrb_value(mrb.get(), obj));
 
 		define_function_method(
 			mrb.get(),
@@ -167,12 +170,13 @@ protected:
 
 		memfuncptr_t* ptr = new memfuncptr_t;
 		*ptr = func;
+		NativeObject<memfuncptr_t> obj("Object", std::shared_ptr<memfuncptr_t>(ptr));
 
 		mrb_mod_cv_set(
 			mrb.get(),
 			module_class,
 			func_ptr_sym,
-			TypeBinder<size_t>::to_mrb_value(mrb.get(), (size_t)ptr));
+			TypeBinder< NativeObject<memfuncptr_t> >::to_mrb_value(mrb.get(), obj));
 
 		define_function_method(
 			mrb.get(),
