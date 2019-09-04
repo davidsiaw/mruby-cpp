@@ -10,7 +10,7 @@ jobs:
           command: 'apt-get update && apt-get install -y bison && gem install coveralls specific_install && gem specific_install https://github.com/davidsiaw/coveralls-gcov'
       - run:
           name: Build and Test
-          command: 'make'
+          command: 'make test'
       - run:
           name: Submit coverage report
           command: 'coveralls-gcov send --repo-token $COVERALLS_TOKEN --root `pwd` --exclude mruby --exclude tests'
