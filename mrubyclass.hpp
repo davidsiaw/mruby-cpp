@@ -30,7 +30,7 @@ class Class : public Module
 		}
 
 		auto curried = curry(func);
-		std::shared_ptr<TClass> instance;
+		std::shared_ptr<TClass> instance = nullptr;
 		try
 		{
 			instance = func_caller<0, std::shared_ptr<TClass>, TConstructorArgs...>(mrb, curried, args);
@@ -65,7 +65,7 @@ class Class : public Module
 			return error_argument_count(mrb, self, TypeBinder<mrb_sym>::to_mrb_value(mrb, mrb_intern_cstr(mrb, "initialize")), argc, 0);
 		}
 
-		std::shared_ptr<TClass> instance;
+		std::shared_ptr<TClass> instance = nullptr;
 		try
 		{
 			instance = std::make_shared<TClass>();
@@ -146,7 +146,9 @@ public:
 			return error_argument_count(mrb, self, nval, argc, 1);
 		}
 
-		memptr_t* ptr = (memptr_t*)TypeBinder<size_t>::from_mrb_value(mrb, mem_ptr_holder);
+		NativeObject<memptr_t> obj = TypeBinder< NativeObject<memptr_t> >::from_mrb_value(mrb, mem_ptr_holder);
+
+		memptr_t* ptr = obj.get_instance();
 		NativeObject<TClass>* thisptr = (NativeObject<TClass>*)DATA_PTR(self);
 
 		thisptr->get_instance()->**ptr = TypeBinder<TVal>::from_mrb_value(mrb, *args);
@@ -168,7 +170,9 @@ public:
 		mrb_sym mem_ptr_sym = mrb_intern_cstr(mrb, ptr_name.c_str());
 		mrb_value mem_ptr_holder = mrb_mod_cv_get(mrb, cls, mem_ptr_sym);
 
-		memptr_t* ptr = (memptr_t*)TypeBinder<size_t>::from_mrb_value(mrb, mem_ptr_holder);
+		NativeObject<memptr_t> obj = TypeBinder< NativeObject<memptr_t> >::from_mrb_value(mrb, mem_ptr_holder);
+
+		memptr_t* ptr = obj.get_instance();
 		NativeObject<TClass>* thisptr = (NativeObject<TClass>*)DATA_PTR(self);
 
 		return TypeBinder<TVal>::to_mrb_value(mrb, thisptr->get_instance()->**ptr);
@@ -185,12 +189,13 @@ public:
 
 		memptr_t* ptr = new memptr_t;
 		*ptr = var;
+		NativeObject<memptr_t> obj("Object", std::shared_ptr<memptr_t>(ptr));
 
 		mrb_mod_cv_set(
 			mrb.get(),
 			module_class,
 			mem_ptr_sym,
-			TypeBinder<size_t>::to_mrb_value(mrb.get(), (size_t)ptr));
+			TypeBinder< NativeObject<memptr_t> >::to_mrb_value(mrb.get(), obj));
 
 		define_function_method(
 			mrb.get(),

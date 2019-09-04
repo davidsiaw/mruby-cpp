@@ -17,6 +17,7 @@ TESTCOMMAND := $(patsubst $(TEST_DIR)/%.cpp, %, $(wildcard $(TEST_DIR)/*.cpp))
 
 RED := \033[0;31m
 GREEN := \033[0;32m
+LRED := \033[0;91m
 NC := \033[0m # No Color
 
 all: test
@@ -32,49 +33,58 @@ $(LIBMRUBY): mruby/gitref
 	cd mruby && make
 
 $(BIN_DIR)/test_%: $(TEST_DIR)/%.cpp $(LIBMRUBY) $(SOURCES)
+	@echo "COMPILE $@"
 	@mkdir -p $(BIN_DIR)
-	$(CC) $(patsubst $(BIN_DIR)/test_%, $(TEST_DIR)/%.cpp, $@) $(CFLAGS) -o $@ $(LDFLAGS)
+	@$(CC) $(patsubst $(BIN_DIR)/test_%, $(TEST_DIR)/%.cpp, $@) $(CFLAGS) -o $@ $(LDFLAGS)
 
 test_%: $(BIN_DIR)/test_%
+	@echo "TESTING $(@:test_%=%)"
 	@mkdir -p $(LOG_DIR)
-	$(BIN_DIR)/$@ 1> $(LOG_DIR)/$@.stdout 2> $(LOG_DIR)/$@.stderr; echo "$$?" > $(LOG_DIR)/$@.retcode
+	@$(BIN_DIR)/$@ 1> $(LOG_DIR)/$@.stdout 2> $(LOG_DIR)/$@.stderr; echo "$$?" > $(LOG_DIR)/$@.retcode
 
 memtest_%: $(BIN_DIR)/test_%
+	@echo "LEAKCHK $(@:memtest_%=%)"
 	@mkdir -p $(LOG_DIR)
-	valgrind --error-exitcode=-1 --leak-check=full --log-file=$(LOG_DIR)/$@.valgrind $(BIN_DIR)/$@ 1> $(LOG_DIR)/$@.stdout 2> $(LOG_DIR)/$@.stderr; echo "$$?" > $(LOG_DIR)/$@.retcode
+	@valgrind --error-exitcode=1 --leak-check=full --log-file=$(LOG_DIR)/$@.valgrind $(BIN_DIR)/$(@:memtest_%=test_%) 1> $(LOG_DIR)/$@.stdout 2> $(LOG_DIR)/$@.stderr; echo "$$?" > $(LOG_DIR)/$(@:memtest_%=test_%).memretcode
 
-runtest: $(ALL_TESTS)
+all_tests: $(ALL_TESTS)
+
+all_memtests: $(ALL_MEMTESTS)
+
+runtest: all_tests all_memtests
 	@rm -f fail
 	@rm -f pcount
 	@rm -f fcount
+	@rm -f lcount
 	@echo "" > pcount
 	@echo "" > fcount
+	@echo "" > lcount
 	@$(foreach file, $(TESTCOMMAND), \
 		if grep -q 0 $(LOG_DIR)/test_$(file).retcode; then \
-			echo "$(GREEN)PASSED$(NC): $(file)"; \
-			sed -i '$$ s/$$/pass /' pcount; \
+			if grep -q 0 $(LOG_DIR)/test_$(file).memretcode; then \
+				echo "$(GREEN)PASSED$(NC): $(file)"; \
+				sed -i '$$ s/$$/pass /' pcount; \
+			else \
+				echo "$(LRED)LEAKED$(NC): $(file)"; \
+				sed -i '$$ s/$$/leak /' lcount; \
+			fi; \
 		else \
 			echo "$(RED)FAILED$(NC): $(file)"; \
 			echo $(file) >> fail; \
 			sed -i '$$ s/$$/fail /' fcount; \
 		fi; \
 	)
-	@echo $(words $(shell cat pcount)) "passed"
-	@echo $(words $(shell cat fcount)) "failures"
+	@echo $(words $(shell cat pcount)) "$(GREEN)passed$(NC)"
+	@echo $(words $(shell cat fcount)) "$(RED)failures$(NC)"
+	@echo $(words $(shell cat lcount)) "$(LRED)tests leaking$(NC)"
 	@gcov $(LOG_DIR)/*.gcda > gcov.log
 	cp *.gcda $(LOG_DIR) && rm -f *.gcda
-	cp *.gcno $(LOG_DIR) && rm -f *.gcno
+	cp *.gcno $(LOG_DIR) || :
+	rm -f *.gcno
 	cp *.gcov $(LOG_DIR) && rm -f *.gcov
 
-summarizetest: runtest
-	@echo "Failure summary:"
-	@$(foreach file, $(shell cat fail), \
-		echo "make test_$(file)"; \
-		echo ""; \
-	)
-
-test: summarizetest
-	@if [ -f fail ]; then echo "Test failures detected!"; exit 1; fi;
+test: runtest
+	@if [ -f fail ]; then echo "Test failures detected!"; exit 1; fi
 
 lightclean:
 	rm -f $(LOG_DIR)/*.gcda $(LOG_DIR)/*.gcno $(LOG_DIR)/*.gcov *.gcno *.gcov
@@ -90,4 +100,5 @@ distclean: bigclean
 	rm -rf bin
 	rm -rf logs
 
-.PHONY: distclean clean test
+.SECONDARY: all_tests all_memtests
+.PHONY: distclean clean test all_tests all_memtests
