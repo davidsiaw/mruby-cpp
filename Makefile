@@ -51,33 +51,37 @@ all_tests: $(ALL_TESTS)
 
 all_memtests: $(ALL_MEMTESTS)
 
-runtest: all_tests all_memtests
+interm_clean: all_tests all_memtests
 	@rm -f fail
 	@rm -f pcount
 	@rm -f fcount
 	@rm -f lcount
-	@echo "" > pcount
-	@echo "" > fcount
-	@echo "" > lcount
+	@touch pcount
+	@touch fcount
+	@touch lcount
+
+summarize: interm_clean
 	@$(foreach file, $(TESTCOMMAND), \
 		if grep -q 0 $(LOG_DIR)/test_$(file).retcode; then \
 			if grep -q 0 $(LOG_DIR)/test_$(file).memretcode; then \
 				echo "$(GREEN)PASSED$(NC): $(file)"; \
-				sed -i '$$ s/$$/pass /' pcount; \
+				echo $(file) >> pcount; \
 			else \
 				echo "$(LRED)LEAKED$(NC): $(file)"; \
-				sed -i '$$ s/$$/leak /' lcount; \
+				echo $(file) >> lcount; \
 			fi; \
 		else \
 			echo "$(RED)FAILED$(NC): $(file)"; \
 			echo $(file) >> fail; \
-			sed -i '$$ s/$$/fail /' fcount; \
+				echo $(file) >> fcount; \
 		fi; \
 	)
+
+runtest: summarize
 	@echo $(words $(shell cat pcount)) "$(GREEN)passed$(NC)"
 	@echo $(words $(shell cat fcount)) "$(RED)failures$(NC)"
 	@echo $(words $(shell cat lcount)) "$(LRED)tests leaking$(NC)"
-	@gcov $(LOG_DIR)/*.gcda > gcov.log
+	@gcov *.gcda > gcov.log
 	#cp *.gcda $(LOG_DIR) && rm -f *.gcda
 	#cp *.gcno $(LOG_DIR) || :
 	#rm -f *.gcno
@@ -87,18 +91,18 @@ test: runtest
 	@if [ -f fail ]; then echo "Test failures detected!"; exit 1; fi
 
 lightclean:
-	rm -f $(LOG_DIR)/*.gcda $(LOG_DIR)/*.gcno $(LOG_DIR)/*.gcov *.gcno *.gcov
+	rm -f *.gcda *.gcno *.gcov *.gcno *.gcov
 
 clean: lightclean
-	rm -f $(BIN_DIR)/* $(LOG_DIR)/* pcount fcount
+	rm -f $(BIN_DIR)/* $(LOG_DIR)/* pcount fcount lcount
 
 bigclean: clean
 	cd mruby && make clean
 
 distclean: bigclean
 	rm -rf mruby
-	rm -rf bin
+	rm -rf bins
 	rm -rf logs
 
-.SECONDARY: all_tests all_memtests
-.PHONY: distclean clean test all_tests all_memtests
+.SECONDARY:
+.PHONY: distclean clean test

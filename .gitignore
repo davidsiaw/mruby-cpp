@@ -7,3 +7,4 @@ gcov.log
 bins/
 fcount
 pcount
+lcount
