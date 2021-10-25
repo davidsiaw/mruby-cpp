@@ -11,8 +11,14 @@ struct TypeBinder
 template<>
 struct TypeBinder<RClass*> 
 {
-	static mrb_value to_mrb_value(mrb_state* mrb, RClass* cls) { return mrb_class_find_path(mrb, cls); }
-	static RClass* from_mrb_value(mrb_state* mrb, mrb_value val) { return mrb_class(mrb, val); }
+	static mrb_value to_mrb_value(mrb_state* mrb, RClass* cls)
+	{
+		return mrb_class_find_path(mrb, cls);
+	}
+	static RClass* from_mrb_value(mrb_state* mrb, mrb_value val)
+	{
+		return mrb_class(mrb, val);
+	}
 };
 
 template<>
@@ -21,8 +27,7 @@ struct TypeBinder<RData*>
 	static mrb_value to_mrb_value(mrb_state* mrb, RData* data)
 	{ 
 		mrb_value val = { 0 };
-		val.tt = data->tt;
-		val.value.p = data;
+		SET_OBJ_VALUE(val, data);
 		return val;
 	}
 	static RData* from_mrb_value(mrb_state* mrb, mrb_value val) { return RDATA(val); }
@@ -34,13 +39,12 @@ struct TypeBinder<RProc*>
 	static mrb_value to_mrb_value(mrb_state* mrb, RProc* data)
 	{
 		mrb_value val = { 0 };
-		val.tt = data->tt;
-		val.value.p = data;
+		SET_OBJ_VALUE(val, data);
 		return val;
 	}
 	static RProc* from_mrb_value(mrb_state* mrb, mrb_value val)
 	{
-		return (RProc*)mrb_ptr(val);
+		return mrb_proc_ptr(val);
 	}
 };
 
@@ -107,9 +111,9 @@ struct TypeBinder<std::string>
 	}
 	static std::string from_mrb_value(mrb_state* mrb, mrb_value val) 
 	{ 
-		if (val.tt == MRB_TT_SYMBOL)
+		if (mrb_type(val) == MRB_TT_SYMBOL)
 		{
-			val = mrb_sym2str(mrb, val.value.i);
+			val = mrb_sym2str(mrb, mrb_symbol(val));
 		}
 		return std::string(RSTRING_PTR(val), RSTRING_LEN(val)); 
 	}
@@ -127,9 +131,9 @@ struct TypeBinder<const std::string>
 	}
 	static std::string from_mrb_value(mrb_state* mrb, mrb_value val)
 	{
-		if (val.tt == MRB_TT_SYMBOL)
+		if (mrb_type(val) == MRB_TT_SYMBOL)
 		{
-			val = mrb_sym2str(mrb, val.value.i);
+			val = mrb_sym2str(mrb, mrb_symbol(val));
 		}
 		return std::string(RSTRING_PTR(val), RSTRING_LEN(val));
 	}
@@ -147,9 +151,9 @@ struct TypeBinder<const std::string&>
 	}
 	static std::string from_mrb_value(mrb_state* mrb, mrb_value val)
 	{
-		if (val.tt == MRB_TT_SYMBOL)
+		if (mrb_type(val) == MRB_TT_SYMBOL)
 		{
-			val = mrb_sym2str(mrb, val.value.i);
+			val = mrb_sym2str(mrb, mrb_symbol(val));
 		}
 		return std::string(RSTRING_PTR(val), RSTRING_LEN(val));
 	}
@@ -178,7 +182,7 @@ struct TypeBinder< NativeObject<TClass> >
 
 	static NativeObject<TClass> from_mrb_value(mrb_state* mrb, mrb_value val)
 	{
-		if (val.tt == MRB_TT_DATA)
+		if (mrb_type(val) == MRB_TT_DATA)
 		{
 			NativeObject<TClass>* thisptr = (NativeObject<TClass>*)DATA_PTR(val);
 			return *thisptr;

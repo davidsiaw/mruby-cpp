@@ -236,13 +236,13 @@ public:
 		if (cls == nullptr)
 		{
 			mrb_value val = mrb_vm_const_get(mrb.get(), name_sym);
-			return val.tt == type;
+			return mrb_type(val) == type;
 		}
 		bool is_defined = mrb_const_defined(mrb.get(), mrb_obj_value(cls), name_sym) == 1;
 		if (is_defined)
 		{
 			mrb_value val = mrb_const_get(mrb.get(), mrb_obj_value(cls), name_sym);
-			return val.tt == type;
+			return mrb_type(val) == type;
 		}
 		return false;
 	}

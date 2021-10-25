@@ -9,7 +9,6 @@ test:
   tags:
     - ruby
   script:
-    - git clone https://github.com/mruby/mruby
     - make
     - tail gcov.log -n 1
   coverage: '/^Lines executed *: *(\d+\.\d+%) of/'
