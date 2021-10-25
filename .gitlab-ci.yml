@@ -1,4 +1,4 @@
-image: 2.6-alpine3.13
+image: ruby:2.6-alpine3.13
 before_script:
   - ruby -v
   - apk update
