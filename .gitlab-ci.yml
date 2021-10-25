@@ -1,6 +1,8 @@
+variables:
+     GIT_SUBMODULE_STRATEGY: recursive
+
 image: ruby:2.6-alpine3.13
 before_script:
-  - git submodule update --init
   - ruby -v
   - apk update
   - apk add build-base bison git curl valgrind
