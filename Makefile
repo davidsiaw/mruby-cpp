@@ -62,10 +62,12 @@ count_files:
 		else \
 			echo "$(LRED)LEAKED$(NC): $@)"; \
 			echo $@ >> lcount; \
+			cat $(LOG_DIR)/$(@:%_ccount=test_%)/valgrind.log; \
 			touch fail; \
 		fi; \
 	else \
 		echo "$(RED)FAILED$(NC): $@"; \
+		cat $(LOG_DIR)/$(@:%_ccount=test_%)/test.stderr; \
 		touch fail; \
 			echo $@ >> fcount; \
 	fi; \
