@@ -4,14 +4,16 @@ LDFLAGS := -Lmruby/build/host/lib/ -lmruby
 TEST_DIR := tests
 BIN_DIR := bins
 LOG_DIR := logs
+OBJ_DIR := objs
 LIBMRUBY := mruby/build/host/lib/libmruby.a
 GITREF := master
 
 SOURCES := $(wildcard *.hpp)
 TESTS := $(wildcard $(TEST_DIR)/*.cpp)
 BINS := $(patsubst $(TEST_DIR)/%.cpp, $(BIN_DIR)/test_%, $(TESTS))
-ALL_TESTS := $(patsubst $(TEST_DIR)/%.cpp, test_%, $(TESTS))
-ALL_MEMTESTS := $(patsubst $(TEST_DIR)/%.cpp, memtest_%, $(TESTS))
+
+ALL_TEST_RESULTS := $(patsubst $(TEST_DIR)/%.cpp, $(LOG_DIR)/test_%, $(TESTS))
+ALL_COUNTS := $(patsubst $(TEST_DIR)/%.cpp, %_ccount, $(TESTS))
 
 TESTCOMMAND := $(patsubst $(TEST_DIR)/%.cpp, %, $(wildcard $(TEST_DIR)/*.cpp))
 
@@ -30,21 +32,20 @@ $(BIN_DIR)/test_%: $(TEST_DIR)/%.cpp $(LIBMRUBY) $(SOURCES)
 	@mkdir -p $(BIN_DIR)
 	@$(CC) $(patsubst $(BIN_DIR)/test_%, $(TEST_DIR)/%.cpp, $@) $(CFLAGS) -o $@ $(LDFLAGS)
 
-test_%: $(BIN_DIR)/test_%
-	@echo "TESTING $(@:test_%=%)"
+$(LOG_DIR):
 	@mkdir -p $(LOG_DIR)
-	@$(BIN_DIR)/$@ 1> $(LOG_DIR)/$@.stdout 2> $(LOG_DIR)/$@.stderr; echo "$$?" > $(LOG_DIR)/$@.retcode
 
-memtest_%: $(BIN_DIR)/test_%
-	@echo "LEAKCHK $(@:memtest_%=%)"
-	@mkdir -p $(LOG_DIR)
-	@valgrind --error-exitcode=1 --leak-check=full --log-file=$(LOG_DIR)/$@.valgrind $(BIN_DIR)/$(@:memtest_%=test_%) 1> $(LOG_DIR)/$@.stdout 2> $(LOG_DIR)/$@.stderr; echo "$$?" > $(LOG_DIR)/$(@:memtest_%=test_%).memretcode
+$(LOG_DIR)/test_%: $(BIN_DIR)/test_%
+	@mkdir -p $@
+	@echo "TESTING $(@:$(LOG_DIR)/test_%=test_%)"
+	@$(BIN_DIR)/$(@:$(LOG_DIR)/test_%=test_%) 1> $@/test.stdout 2> $@/test.stderr; echo "$$?" > $@/test.retcode
+	@echo "LEAKCHK $(@:test_%=memtest_%)"
+	@valgrind --error-exitcode=1 --leak-check=full --log-file=$@/valgrind.log $(BIN_DIR)/$(@:$(LOG_DIR)/%=%) 1> $@/valgrind.stdout 2> $@/valgrind.stderr; echo "$$?" > $@/valgrind.retcode
+	@mv $(@:$(LOG_DIR)/test_%=%).gc* $(LOG_DIR)
 
-all_tests: $(ALL_TESTS)
+all_tests: $(ALL_TEST_RESULTS)
 
-all_memtests: $(ALL_MEMTESTS)
-
-interm_clean: all_tests all_memtests
+count_files:
 	@rm -f fail
 	@rm -f pcount
 	@rm -f fcount
@@ -53,41 +54,43 @@ interm_clean: all_tests all_memtests
 	@touch fcount
 	@touch lcount
 
-summarize: interm_clean
-	@$(foreach file, $(TESTCOMMAND), \
-		if grep -q 0 $(LOG_DIR)/test_$(file).retcode; then \
-			if grep -q 0 $(LOG_DIR)/test_$(file).memretcode; then \
-				echo "$(GREEN)PASSED$(NC): $(file)"; \
-				echo $(file) >> pcount; \
-			else \
-				echo "$(LRED)LEAKED$(NC): $(file)"; \
-				echo $(file) >> lcount; \
-			fi; \
+%_ccount: count_files all_tests
+	@if grep -q 0 $(LOG_DIR)/$(@:%_ccount=test_%)/test.retcode; then \
+		if grep -q 0 $(LOG_DIR)/$(@:%_ccount=test_%)/valgrind.retcode; then \
+			echo "$(GREEN)PASSED$(NC): $@"; \
+			echo $@ >> pcount; \
 		else \
-			echo "$(RED)FAILED$(NC): $(file)"; \
-			echo $(file) >> fail; \
-				echo $(file) >> fcount; \
+			echo "$(LRED)LEAKED$(NC): $@)"; \
+			echo $@ >> lcount; \
+			touch fail; \
 		fi; \
-	)
+	else \
+		echo "$(RED)FAILED$(NC): $@"; \
+		touch fail; \
+			echo $@ >> fcount; \
+	fi; \
 
-runtest: summarize
+all_counts: $(ALL_COUNTS)
+
+summary: all_counts
 	@echo $(words $(shell cat pcount)) "$(GREEN)passed$(NC)"
 	@echo $(words $(shell cat fcount)) "$(RED)failures$(NC)"
 	@echo $(words $(shell cat lcount)) "$(LRED)tests leaking$(NC)"
-	@gcov *.gcda > gcov.log
-	cp *.gcda $(LOG_DIR) && rm -f *.gcda
-	cp *.gcno $(LOG_DIR) || :
-	rm -f *.gcno
-	cp *.gcov $(LOG_DIR) && rm -f *.gcov
+	@rm -f pcount
+	@rm -f fcount
+	@rm -f lcount
 
-test: runtest
+gcov.log: all_tests
+	@gcov $(LOG_DIR)/*.gcda > gcov.log
+
+test: summary
 	@if [ -f fail ]; then echo "Test failures detected!"; exit 1; fi
 
 lightclean:
 	rm -f *.gcda *.gcno *.gcov *.gcno *.gcov
 
 clean: lightclean
-	rm -f $(BIN_DIR)/* $(LOG_DIR)/* pcount fcount lcount $(LIBMRUBY)
+	rm -rf $(BIN_DIR)/* $(LOG_DIR)/* pcount fcount lcount
 
 bigclean: clean
 	cd mruby && make clean
