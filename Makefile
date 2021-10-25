@@ -76,8 +76,8 @@ all_counts: $(ALL_COUNTS)
 
 summary: all_counts
 	@echo $(words $(shell cat pcount)) "$(GREEN)passed$(NC)"
-	@echo $(words $(shell cat fcount)) "$(RED)failures$(NC)"
-	@echo $(words $(shell cat lcount)) "$(LRED)tests leaking$(NC)"
+	@echo $(words $(shell cat fcount)) "$(RED)failing$(NC)"
+	@echo $(words $(shell cat lcount)) "$(LRED)leaking$(NC)"
 	@rm -f pcount
 	@rm -f fcount
 	@rm -f lcount

@@ -1,8 +1,9 @@
 image: ruby:2.6-alpine3.13
 before_script:
+  - git submodule update --init
   - ruby -v
   - apk update
-  - apk add build-base bison git curl
+  - apk add build-base bison git curl valgrind
   - which ruby
 
 test:
