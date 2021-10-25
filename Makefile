@@ -22,14 +22,7 @@ NC := \033[0m # No Color
 
 all: test
 
-mruby/minirake:
-	git clone https://github.com/mruby/mruby
-
-mruby/gitref: mruby/minirake
-	echo $(GITREF) > mruby/gitref
-
-$(LIBMRUBY): mruby/gitref
-	cd mruby && git checkout `cat gitref`
+$(LIBMRUBY):
 	cd mruby && make
 
 $(BIN_DIR)/test_%: $(TEST_DIR)/%.cpp $(LIBMRUBY) $(SOURCES)
