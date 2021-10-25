@@ -23,4 +23,3 @@ int main()
 	vm.run(script);
 	return vm.get_global_variable<int>("$b") - 1000;
 }
-

@@ -82,10 +82,10 @@ runtest: summarize
 	@echo $(words $(shell cat fcount)) "$(RED)failures$(NC)"
 	@echo $(words $(shell cat lcount)) "$(LRED)tests leaking$(NC)"
 	@gcov *.gcda > gcov.log
-	#cp *.gcda $(LOG_DIR) && rm -f *.gcda
-	#cp *.gcno $(LOG_DIR) || :
-	#rm -f *.gcno
-	#cp *.gcov $(LOG_DIR) && rm -f *.gcov
+	cp *.gcda $(LOG_DIR) && rm -f *.gcda
+	cp *.gcno $(LOG_DIR) || :
+	rm -f *.gcno
+	cp *.gcov $(LOG_DIR) && rm -f *.gcov
 
 test: runtest
 	@if [ -f fail ]; then echo "Test failures detected!"; exit 1; fi

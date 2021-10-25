@@ -1,6 +1,20 @@
 #ifndef __MRUBYMODULE_HPP__
 #define __MRUBYMODULE_HPP__
 
+#define START_HANDLE_ERROR \
+		mrb_value exc = mrb_nil_value(); \
+		try // Try cover to cleanup before raising into mruby
+
+#define HANDLE_ERROR_AND_EXIT throw
+
+#define END_HANDLE_ERROR \
+		catch(mrb_value the_exception) \
+		{ \
+			exc = the_exception; \
+		} \
+		mrb_exc_raise(mrb, exc); \
+		return mrb_nil_value();	// This should never run because raise jumps away
+
 template<class TClass>
 class Class;
 
@@ -17,100 +31,107 @@ protected:
 	{
 	}
 
-	static mrb_value error_argument_count(mrb_state *mrb, mrb_value class_name, mrb_value func_name, size_t given, size_t expected) {
-		mrb_raisef(mrb, E_ARGUMENT_ERROR, "in '%S': %S: wrong number of arguments (%S for %S)",
-			class_name,
-			func_name,
-			mrb_fixnum_value(given),
-			mrb_fixnum_value(expected));
-		return mrb_nil_value();
+	static mrb_value error_argument_count(mrb_state *mrb, const std::string &class_name, const std::string &func_name, size_t given, size_t expected) {
+		std::stringstream ss;
+		ss << "in '" << class_name << "': " << func_name << ": wrong number of arguments (" << given << " for " << expected << ")";
+
+		printf("%s\n", ss.str().c_str());
+		return mrb_exc_new(mrb, E_ARGUMENT_ERROR, ss.str().c_str(), ss.str().length());
 	}
 
 	template< typename TRet, typename ... TArgs >
 	static mrb_value mruby_func_caller(mrb_state* mrb, mrb_value self)
 	{
-		typedef TRet(func_t)(TArgs...);
-
-		RClass* cls = TypeBinder<RClass*>::from_mrb_value(mrb, self);
-		mrb_value* args;
-		size_t argc = 0;
-		mrb_get_args(mrb, "*", &args, &argc);
-
-		mrb_value kernel_val = TypeBinder<RClass*>::to_mrb_value(mrb, mrb->kernel_module);
-		mrb_value nval = mrb_funcall(mrb, kernel_val, "__method__", 0);
-		std::string name = TypeBinder<std::string>::from_mrb_value(mrb, nval);
-		std::string ptr_name = "__funcptr__" + TypeBinder<std::string>::from_mrb_value(mrb, nval);
-
-		mrb_sym func_ptr_sym = mrb_intern_cstr(mrb, ptr_name.c_str());
-		mrb_value func_ptr_holder = mrb_mod_cv_get(mrb, cls, func_ptr_sym);
-
-		if (argc != sizeof...(TArgs))
+		START_HANDLE_ERROR
 		{
-			return error_argument_count(mrb, self, nval, argc, sizeof...(TArgs));
-		}
+			typedef TRet(func_t)(TArgs...);
 
-		func_t* func = (func_t*)TypeBinder<size_t>::from_mrb_value(mrb, func_ptr_holder);
-		std::function<func_t> func_obj(func);
-		try
-		{
-			return mruby_func_called_returner<TRet, TArgs...>::call(mrb, func_obj, args);
+			RClass* cls = TypeBinder<RClass*>::from_mrb_value(mrb, self);
+			mrb_value* args;
+			size_t argc = 0;
+			mrb_get_args(mrb, "*", &args, &argc);
+
+			mrb_value kernel_val = TypeBinder<RClass*>::to_mrb_value(mrb, mrb->kernel_module);
+			mrb_value nval = mrb_funcall(mrb, kernel_val, "__method__", 0);
+			std::string name = TypeBinder<std::string>::from_mrb_value(mrb, nval);
+			std::string ptr_name = "__funcptr__" + name;
+
+			mrb_sym func_ptr_sym = mrb_intern_cstr(mrb, ptr_name.c_str());
+			mrb_value func_ptr_holder = mrb_mod_cv_get(mrb, cls, func_ptr_sym);
+
+			if (argc != sizeof...(TArgs))
+			{
+				std::string class_name = TypeBinder<std::string>::from_mrb_value(mrb, mrb_inspect(mrb, self));
+				HANDLE_ERROR_AND_EXIT error_argument_count(mrb, class_name, name, argc, sizeof...(TArgs));
+			}
+
+			func_t* func = (func_t*)TypeBinder<size_t>::from_mrb_value(mrb, func_ptr_holder);
+			std::function<func_t> func_obj(func);
+			try
+			{
+				return mruby_func_called_returner<TRet, TArgs...>::call(mrb, func_obj, args);
+			}
+			catch (const RubyException &e)
+			{
+				HANDLE_ERROR_AND_EXIT mrb_exc_new(mrb, E_RUNTIME_ERROR, e.what(), strlen(e.what()));
+			}
 		}
-		catch (const RubyException &e)
-		{
-			mrb_raise(mrb, E_RUNTIME_ERROR, e.what());
-		}
-		return mrb_nil_value();
+		END_HANDLE_ERROR
 	}
 
 
 	template< typename TRet, typename TClass, typename ... TArgs >
 	static mrb_value mruby_member_func_caller(mrb_state* mrb, mrb_value self)
 	{
-		typedef TRet(TClass::*memfuncptr_t)(TArgs...);
-		RClass* cls = TypeBinder<RClass*>::from_mrb_value(mrb, self);
-
-		mrb_value* args;
-		size_t argc = 0;
-		mrb_get_args(mrb, "*", &args, &argc);
-
-		mrb_value kernel_val = TypeBinder<RClass*>::to_mrb_value(mrb, mrb->kernel_module);
-		mrb_value nval = mrb_funcall(mrb, kernel_val, "__method__", 0);
-		std::string name = TypeBinder<std::string>::from_mrb_value(mrb, nval);
-		std::string ptr_name = "__allocated_funcptr__" + TypeBinder<std::string>::from_mrb_value(mrb, nval);
-
-		mrb_sym func_ptr_sym = mrb_intern_cstr(mrb, ptr_name.c_str());
-		mrb_value func_ptr_holder = mrb_mod_cv_get(mrb, cls, func_ptr_sym);
-
-		if (argc != sizeof...(TArgs))
+		START_HANDLE_ERROR
 		{
-			return error_argument_count(mrb, self, nval, argc, sizeof...(TArgs));
-		}
+			typedef TRet(TClass::*memfuncptr_t)(TArgs...);
+			RClass* cls = TypeBinder<RClass*>::from_mrb_value(mrb, self);
 
-		NativeObject<memfuncptr_t> obj = TypeBinder< NativeObject<memfuncptr_t> >::from_mrb_value(mrb, func_ptr_holder);
+			mrb_value* args;
+			size_t argc = 0;
+			mrb_get_args(mrb, "*", &args, &argc);
 
-		memfuncptr_t* ptr = obj.get_instance();
-		NativeObject<TClass>* thisptr = (NativeObject<TClass>*)DATA_PTR(self);
+			mrb_value kernel_val = TypeBinder<RClass*>::to_mrb_value(mrb, mrb->kernel_module);
+			mrb_value nval = mrb_funcall(mrb, kernel_val, "__method__", 0);
+			std::string name = TypeBinder<std::string>::from_mrb_value(mrb, nval);
+			std::string ptr_name = "__allocated_funcptr__" + name;
 
-		try
-		{
-			auto callable = [&](TArgs... params) -> TRet
+			mrb_sym func_ptr_sym = mrb_intern_cstr(mrb, ptr_name.c_str());
+			mrb_value func_ptr_holder = mrb_mod_cv_get(mrb, cls, func_ptr_sym);
+
+			if (argc != sizeof...(TArgs))
 			{
-				return (thisptr->get_instance()->**ptr)(params...);
-			};
+				std::string class_name = TypeBinder<std::string>::from_mrb_value(mrb, mrb_inspect(mrb, self));
+				HANDLE_ERROR_AND_EXIT error_argument_count(mrb, class_name, name, argc, sizeof...(TArgs));
+			}
 
-			return mruby_func_called_returner<TRet, TArgs...>::call(
-				mrb,
-				[=](TArgs... params)->TRet
+			NativeObject<memfuncptr_t> obj = TypeBinder< NativeObject<memfuncptr_t> >::from_mrb_value(mrb, func_ptr_holder);
+
+			memfuncptr_t* ptr = obj.get_instance();
+			NativeObject<TClass>* thisptr = (NativeObject<TClass>*)DATA_PTR(self);
+
+			try
+			{
+				auto callable = [&](TArgs... params) -> TRet
 				{
-					return callable(params...);
-				},
-				args);
+					return (thisptr->get_instance()->**ptr)(params...);
+				};
+
+				return mruby_func_called_returner<TRet, TArgs...>::call(
+					mrb,
+					[=](TArgs... params)->TRet
+					{
+						return callable(params...);
+					},
+					args);
+			}
+			catch (const RubyException &e)
+			{
+				HANDLE_ERROR_AND_EXIT mrb_exc_new(mrb, E_RUNTIME_ERROR, e.what(), strlen(e.what()));
+			}
 		}
-		catch (const RubyException &e)
-		{
-			mrb_raise(mrb, E_RUNTIME_ERROR, e.what());
-		}
-		return mrb_nil_value();
+		END_HANDLE_ERROR
 	}
 
 	template<typename TRet, typename ... TArgs>
@@ -199,7 +220,7 @@ public:
 
 	}
 
-	~Module()
+	virtual ~Module()
 	{
 
 	}

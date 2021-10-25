@@ -17,6 +17,8 @@ int main()
 						"\n""rescue ArgumentError => e"
 						"\n""  if e.message == 'in \\'Animals\\': number: wrong number of arguments (1 for 3)'"
 						"\n""    $b = 1000"
+						"\n""  else"
+						"\n""    p e.message"
 						"\n""  end"
 						"\n""end";
 	vm.run(script);

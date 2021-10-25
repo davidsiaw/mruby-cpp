@@ -23,6 +23,7 @@ int main()
 						"\n""  if e.message.start_with?('in \\'#<Cat:0x') and e.message.end_with?('>\\': meow: wrong number of arguments (3 for 2)')"
 						"\n""    $b = 1000"
 						"\n""  end"
+						"\n""  puts $a.inspect"
 						"\n""end";
 	vm.run(script);
 	return vm.get_global_variable<int>("$b") - 1000;

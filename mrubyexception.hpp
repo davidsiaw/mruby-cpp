@@ -13,6 +13,10 @@ public:
 		s << type << ": " << msg << ": " << name;
 		error = s.str();
 	}
+
+	virtual ~Exception()
+	{ }
+
 	const char *what() const noexcept
 	{
 		return error.c_str();
@@ -29,6 +33,10 @@ public:
 	NameError(const std::string &msg, const std::string &name)
 		: Exception("NameError", msg, name)
 	{ }
+	
+	virtual ~NameError()
+	{ }
+
 };
 
 class NotImplementedError : public Exception
@@ -37,6 +45,10 @@ public:
 	NotImplementedError(const std::string &msg, const std::string &name)
 		: Exception("NotImplementedError", msg, name)
 	{ }
+	
+	virtual ~NotImplementedError()
+	{ }
+
 };
 
 class TypeError : public Exception
@@ -45,6 +57,10 @@ public:
 	TypeError(const std::string &msg, const std::string &name)
 		: Exception("TypeError", msg, name)
 	{ }
+
+	virtual ~TypeError()
+	{ }
+
 };
 
 class ArgumentError : public Exception
@@ -53,6 +69,10 @@ public:
 	ArgumentError(const std::string &msg, const std::string &name)
 		: Exception("ArgumentError", msg, name)
 	{ }
+
+	virtual ~ArgumentError()
+	{ }
+
 };
 
 // Exceptions that occur inside the VM
@@ -62,6 +82,7 @@ public:
 	RubyException()
 		: error("Exception in C binding")
 	{ }
+	
 	RubyException(const std::string &type, const std::string &msg)
 	{
 		std::stringstream s;
@@ -72,6 +93,10 @@ public:
 		}
 		error = s.str();
 	}
+
+	virtual ~RubyException()
+	{ }
+
 	const char *what() const noexcept
 	{
 		return error.c_str();
@@ -86,6 +111,10 @@ public:
 	RubyStandardError(const std::string &msg="")
 		: RubyException("StandardError", msg)
 	{ }
+
+	virtual ~RubyStandardError()
+	{ }
+
 protected:
 	RubyStandardError(const std::string &type, const std::string &msg)
 		: RubyException(type, msg)
@@ -98,5 +127,9 @@ public:
 	RubyRuntimeError(const std::string &msg="")
 		: RubyStandardError("RuntimeError", msg)
 	{ }
+
+	virtual ~RubyRuntimeError()
+	{ }
+
 };
 #endif // __MRUBYEXCEPTION_HPP__
