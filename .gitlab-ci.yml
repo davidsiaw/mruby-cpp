@@ -19,6 +19,6 @@ test:
   script:
     - LEAKCHECK=1 make
     - make coverage
-    - sleep 10
+    - gcov logs/*.gcda > gcov.log
     - tail gcov.log -n 1
   coverage: '/^Lines executed *: *(\d+\.\d+%) of/'
