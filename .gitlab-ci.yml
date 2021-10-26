@@ -1,11 +1,11 @@
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
-image: ruby:2.6-alpine3.13
+image: ruby:alpine
 before_script:
   - ruby -v
   - apk update
-  - apk add build-base bison git curl valgrind gcovr
+  - apk add bash build-base bison git curl valgrind gcovr
   - which ruby
 
 test:
