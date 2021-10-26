@@ -19,4 +19,5 @@ test:
   script:
     - LEAKCHECK=1 make
     - make coverage
+    - cat gcov.log
   coverage: '/^Lines executed *: *(\d+\.\d+%) of/'
