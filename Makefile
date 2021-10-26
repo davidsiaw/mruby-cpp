@@ -92,7 +92,7 @@ summary: all_counts
 	@rm -f lcount
 
 gcov.log: all_tests
-	@gcov *.gcda > gcov.log
+	@gcov $(LOG_DIR)/*.gcda > gcov.log
 
 coverage: gcov.log
 	tail gcov.log -n 1

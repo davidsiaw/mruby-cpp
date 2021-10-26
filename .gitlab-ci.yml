@@ -15,7 +15,7 @@ test:
     LRED_TEXT: "\e[91m"
     NORMAL_TEXT: "\e[0m"
   tags:
-    - ruby
+    - cpp
   script:
     - LEAKCHECK=1 make
     - make coverage
