@@ -5,7 +5,7 @@ image: ruby:2.6-alpine3.13
 before_script:
   - ruby -v
   - apk update
-  - apk add build-base bison git curl valgrind gcov
+  - apk add build-base bison git curl valgrind gcovr
   - which ruby
 
 test:
