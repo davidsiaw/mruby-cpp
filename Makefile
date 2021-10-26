@@ -6,7 +6,6 @@ BIN_DIR := bins
 LOG_DIR := logs
 OBJ_DIR := objs
 LIBMRUBY := mruby/build/host/lib/libmruby.a
-GITREF := master
 
 SOURCES := $(wildcard *.hpp)
 TESTS := $(wildcard $(TEST_DIR)/*.cpp)
@@ -40,7 +39,7 @@ $(LOG_DIR)/test_%: $(BIN_DIR)/test_%
 	@echo "TESTING $(@:$(LOG_DIR)/test_%=test_%)"
 	@$(BIN_DIR)/$(@:$(LOG_DIR)/test_%=test_%) 1> $@/test.stdout 2> $@/test.stderr; echo "$$?" > $@/test.retcode
 	@echo "LEAKCHK $(@:test_%=memtest_%)"
-	valgrind --error-exitcode=1 --leak-check=full --log-file=$@/valgrind.log $(BIN_DIR)/$(@:$(LOG_DIR)/%=%) 1> $@/valgrind.stdout 2> $@/valgrind.stderr; echo "$$?" > $@/valgrind.retcode
+	@valgrind --error-exitcode=1 --leak-check=full --log-file=$@/valgrind.log $(BIN_DIR)/$(@:$(LOG_DIR)/%=%) 1> $@/valgrind.stdout 2> $@/valgrind.stderr; echo "$$?" > $@/valgrind.retcode
 	@mv $(@:$(LOG_DIR)/test_%=%).gc* $(LOG_DIR)
 
 all_tests: $(ALL_TEST_RESULTS)
@@ -83,6 +82,7 @@ summary: all_counts
 	@rm -f pcount
 	@rm -f fcount
 	@rm -f lcount
+	ls
 
 gcov.log: all_tests
 	@gcov $(LOG_DIR)/*.gcda > gcov.log
