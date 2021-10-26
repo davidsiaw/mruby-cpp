@@ -84,8 +84,10 @@ summary: all_counts
 	@rm -f lcount
 
 gcov.log: all_tests
-	gcov $(LOG_DIR)/*.gcda > gcov.log
-	cat gcov.log
+	@gcov $(LOG_DIR)/*.gcda > gcov.log
+
+coverage: gcov.log
+	tail gcov.log -n 1
 
 test: summary
 	@if [ -f fail ]; then echo "Test failures detected!"; exit 1; fi
