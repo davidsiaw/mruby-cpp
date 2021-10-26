@@ -1,5 +1,5 @@
 variables:
-     GIT_SUBMODULE_STRATEGY: recursive
+  GIT_SUBMODULE_STRATEGY: recursive
 
 image: ruby:2.6-alpine3.13
 before_script:
@@ -9,9 +9,14 @@ before_script:
   - which ruby
 
 test:
+  variables:
+    RED_TEXT: "\e[10m"
+    GREEN_TEXT: "\e[32m"
+    LRED_TEXT: "\e[91m"
+    NORMAL_TEXT: "\e[0m"
   tags:
     - ruby
   script:
-    - make
+    - LEAKCHECK=1 make
     - make coverage
   coverage: '/^Lines executed *: *(\d+\.\d+%) of/'

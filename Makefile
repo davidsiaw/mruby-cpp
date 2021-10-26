@@ -6,6 +6,7 @@ BIN_DIR := bins
 LOG_DIR := logs
 OBJ_DIR := objs
 LIBMRUBY := mruby/build/host/lib/libmruby.a
+SHELL := bash
 
 SOURCES := $(wildcard *.hpp)
 TESTS := $(wildcard $(TEST_DIR)/*.cpp)
@@ -16,10 +17,10 @@ ALL_COUNTS := $(patsubst $(TEST_DIR)/%.cpp, %_ccount, $(TESTS))
 
 TESTCOMMAND := $(patsubst $(TEST_DIR)/%.cpp, %, $(wildcard $(TEST_DIR)/*.cpp))
 
-RED := \e[0;31m
-GREEN := \e[0;32m
-LRED := \e[0;91m
-NC := \e[0m # No Color
+RED_TEXT ?= \e[31m
+GREEN_TEXT ?= \e[32m
+LRED_TEXT ?= \e[91m
+NORMAL_TEXT ?= \e[0m
 
 all: test
 
@@ -36,11 +37,14 @@ $(LOG_DIR):
 
 $(LOG_DIR)/test_%: $(BIN_DIR)/test_%
 	@mkdir -p $@
-	@echo "TESTING $(@:$(LOG_DIR)/test_%=test_%)"
-	@$(BIN_DIR)/$(@:$(LOG_DIR)/test_%=test_%) 1> $@/test.stdout 2> $@/test.stderr; echo "$$?" > $@/test.retcode
-	@echo "LEAKCHK $(@:test_%=memtest_%)"
+	@touch $@
+ifeq ($(LEAKCHECK), 1)
+	@echo "LEAKCHK $(@:$(LOG_DIR)/test_%=test_%)"
 	@valgrind --error-exitcode=1 --leak-check=full --log-file=$@/valgrind.log $(BIN_DIR)/$(@:$(LOG_DIR)/%=%) 1> $@/valgrind.stdout 2> $@/valgrind.stderr; echo "$$?" > $@/valgrind.retcode
 	@mv $(@:$(LOG_DIR)/test_%=%).gc* $(LOG_DIR)
+endif
+	@echo "TESTING $(@:$(LOG_DIR)/test_%=test_%)"
+	@$(BIN_DIR)/$(@:$(LOG_DIR)/test_%=test_%) 1> $@/test.stdout 2> $@/test.stderr; echo "$$?" > $@/test.retcode
 
 all_tests: $(ALL_TEST_RESULTS)
 
@@ -55,19 +59,21 @@ count_files:
 
 %_ccount: count_files all_tests
 	@if grep -q 0 $(LOG_DIR)/$(@:%_ccount=test_%)/test.retcode; then \
-		if grep -q 0 $(LOG_DIR)/$(@:%_ccount=test_%)/valgrind.retcode; then \
-			echo "$(GREEN)PASSED$(NC): $@"; \
-			echo $@ >> pcount; \
-		else \
-			echo "$(LRED)LEAKED$(NC): $@)"; \
+		a=$$(grep -q 0 $(LOG_DIR)/$(@:%_ccount=test_%/valgrind.retcode 2>/dev/null)); \
+		retval=$$?; \
+		if [ "$(LEAKCHECK)" == "1" ] && [ $$retval -eq 1  ]; then \
+			printf "$(LRED_TEXT)LEAKED$(NORMAL_TEXT): $(@:%_ccount=test_%))\n"; \
 			echo $@ >> lcount; \
 			cat $(LOG_DIR)/$(@:%_ccount=test_%)/valgrind.log; \
 			cat $(LOG_DIR)/$(@:%_ccount=test_%)/valgrind.stdout; \
 			cat $(LOG_DIR)/$(@:%_ccount=test_%)/valgrind.stderr; \
 			touch fail; \
+		else \
+			printf "$(GREEN_TEXT)PASSED$(NORMAL_TEXT): $(@:%_ccount=test_%)\n"; \
+			echo $@ >> pcount; \
 		fi; \
 	else \
-		echo "$(RED)FAILED$(NC): $@"; \
+		printf "$(RED_TEXT)FAILED$(NORMAL_TEXT): $(@:%_ccount=test_%)\n"; \
 		cat $(LOG_DIR)/$(@:%_ccount=test_%)/test.stderr; \
 		touch fail; \
 			echo $@ >> fcount; \
@@ -76,9 +82,11 @@ count_files:
 all_counts: $(ALL_COUNTS)
 
 summary: all_counts
-	@echo $(words $(shell cat pcount)) "$(GREEN)passed$(NC)"
-	@echo $(words $(shell cat fcount)) "$(RED)failing$(NC)"
-	@echo $(words $(shell cat lcount)) "$(LRED)leaking$(NC)"
+	@printf "$(words $(shell cat pcount)) $(GREEN_TEXT)passed$(NORMAL_TEXT)\n"
+	@printf "$(words $(shell cat fcount)) $(RED_TEXT)failing$(NORMAL_TEXT)\n"
+	@if [ "$(LEAKCHECK)" == "1" ]; then \
+		printf "$(words $(shell cat lcount)) $(LRED_TEXT)leaking$(NORMAL_TEXT)\n"; \
+	fi
 	@rm -f pcount
 	@rm -f fcount
 	@rm -f lcount
