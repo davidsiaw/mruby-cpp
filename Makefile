@@ -16,10 +16,10 @@ ALL_COUNTS := $(patsubst $(TEST_DIR)/%.cpp, %_ccount, $(TESTS))
 
 TESTCOMMAND := $(patsubst $(TEST_DIR)/%.cpp, %, $(wildcard $(TEST_DIR)/*.cpp))
 
-RED := \033[0;31m
-GREEN := \033[0;32m
-LRED := \033[0;91m
-NC := \033[0m # No Color
+RED := \e[0;31m
+GREEN := \e[0;32m
+LRED := \e[0;91m
+NC := \e[0m # No Color
 
 all: test
 
