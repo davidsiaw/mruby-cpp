@@ -13,5 +13,6 @@ test:
     - ruby
   script:
     - make
+    - make gcov.log
     - tail gcov.log -n 1
   coverage: '/^Lines executed *: *(\d+\.\d+%) of/'
