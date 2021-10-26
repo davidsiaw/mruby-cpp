@@ -82,7 +82,6 @@ summary: all_counts
 	@rm -f pcount
 	@rm -f fcount
 	@rm -f lcount
-	ls
 
 gcov.log: all_tests
 	@gcov $(LOG_DIR)/*.gcda > gcov.log
