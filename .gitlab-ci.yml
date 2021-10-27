@@ -19,13 +19,4 @@ test:
   script:
     - LEAKCHECK=1 make
     - make coverage
-    - echo ------------ 1
-    - gcov logs/*.gcda
-    - echo ------------ 2
-    - tail gcov.log -n 1
-    - echo ------------ outside
-    - cat gcov.log
-  after_script:
-    - echo ------------ after
-    - cat gcov.log
-  coverage: '/^Lines executed *: *(\d+\.\d+%) of/'
+  coverage: '/(\d+ *\d+%)/'

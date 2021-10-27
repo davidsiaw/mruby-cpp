@@ -92,12 +92,10 @@ summary: all_counts
 	@rm -f lcount
 
 gcov.log: all_tests
-	gcov $(LOG_DIR)/*.gcda > gcov.log
+	@gcov $(LOG_DIR)/*.gcda > gcov.log
 
 coverage: gcov.log
-	echo ------------ inside makefile
-	cat gcov.log
-	tail gcov.log -n 1
+	gcovr
 
 test: summary
 	@if [ -f fail ]; then echo "Test failures detected!"; exit 1; fi
