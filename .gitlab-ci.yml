@@ -19,7 +19,9 @@ test:
   script:
     - LEAKCHECK=1 make
     - make coverage
-    - gcov logs/*.gcda > gcov.log
+    - echo ------------ 1
+    - gcov logs/*.gcda
+    - echo ------------ 2
     - tail gcov.log -n 1
     - echo ------------ outside
     - cat gcov.log
