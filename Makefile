@@ -95,6 +95,8 @@ gcov.log: all_tests
 	gcov $(LOG_DIR)/*.gcda > gcov.log
 
 coverage: gcov.log
+	echo ------------ inside makefile
+	cat gcov.log
 	tail gcov.log -n 1
 
 test: summary

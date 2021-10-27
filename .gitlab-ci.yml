@@ -21,4 +21,9 @@ test:
     - make coverage
     - gcov logs/*.gcda > gcov.log
     - tail gcov.log -n 1
+    - echo ------------ outside
+    - cat gcov.log
+  after_script:
+    - echo ------------ after
+    - cat gcov.log
   coverage: '/^Lines executed *: *(\d+\.\d+%) of/'
