@@ -95,7 +95,7 @@ gcov.log: all_tests
 	@gcov $(LOG_DIR)/*.gcda > gcov.log
 
 coverage: gcov.log
-	gcovr
+	gcovr --html --exclude-unreachable-branches --print-summary -o coverage.html --root .
 
 test: summary
 	@if [ -f fail ]; then echo "Test failures detected!"; exit 1; fi

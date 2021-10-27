@@ -19,4 +19,7 @@ test:
   script:
     - LEAKCHECK=1 make
     - make coverage
-  coverage: '/(\d+ *\d+%)/'
+  coverage: /^\s*lines:\s*\d+.\d+\%/
+  artifacts:
+    paths:
+      - coverage.html
