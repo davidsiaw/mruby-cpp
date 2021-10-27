@@ -25,3 +25,18 @@ test:
     name: ${CI_JOB_NAME}-${CI_COMMIT_REF_NAME}-${CI_COMMIT_SHA}
     reports:
       cobertura: coverage.xml
+
+pages:
+  tags:
+    - cpp
+  stage: deploy
+  script:
+    - make coverage
+    - mkdir .public
+    - cp coverage.html .public/index.html
+    - mv .public public
+  artifacts:
+    paths:
+      - public
+  only:
+    - master
