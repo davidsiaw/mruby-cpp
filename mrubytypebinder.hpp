@@ -26,7 +26,7 @@ struct TypeBinder<RData*>
 {
 	static mrb_value to_mrb_value(mrb_state* mrb, RData* data)
 	{ 
-		mrb_value val = { 0 };
+		mrb_value val = {{ 0 }};
 		SET_OBJ_VALUE(val, data);
 		return val;
 	}
@@ -38,7 +38,7 @@ struct TypeBinder<RProc*>
 {
 	static mrb_value to_mrb_value(mrb_state* mrb, RProc* data)
 	{
-		mrb_value val = { 0 };
+		mrb_value val = {{ 0 }};
 		SET_OBJ_VALUE(val, data);
 		return val;
 	}

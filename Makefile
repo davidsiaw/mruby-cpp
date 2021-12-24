@@ -1,5 +1,5 @@
 CC := g++
-CFLAGS := -std=c++11 -I. -I./mruby/include -g -Wall -fprofile-arcs -ftest-coverage
+CFLAGS := -std=c++11 -I. -I./mruby/include -Wall -fprofile-arcs -ftest-coverage
 LDFLAGS := -Lmruby/build/host/lib/ -lmruby
 TEST_DIR := tests
 BIN_DIR := bins
