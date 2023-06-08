@@ -45,6 +45,7 @@ ifeq ($(LEAKCHECK), 1)
 endif
 	@echo "TESTING $(@:$(LOG_DIR)/test_%=test_%)"
 	@$(BIN_DIR)/$(@:$(LOG_DIR)/test_%=test_%) 1> $@/test.stdout 2> $@/test.stderr; echo "$$?" > $@/test.retcode
+	@mv *.gc* $(LOG_DIR)
 
 all_tests: $(ALL_TEST_RESULTS)
 
@@ -93,6 +94,7 @@ summary: all_counts
 
 gcov.log: all_tests
 	@gcov $(LOG_DIR)/*.gcda > gcov.log
+	@mv *.gcov $(LOG_DIR)
 
 coverage: gcov.log
 	gcovr --html --exclude-unreachable-branches --print-summary -o coverage.html --root .

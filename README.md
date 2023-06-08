@@ -72,6 +72,10 @@ make test
 
 This will download mruby and compile it to test the headers.
 
+## Writing a test
+
+Simply add a cpp file to the tests folder, and make will pick it up automatically when running `make test`. If your test fails simply return a non-zero value.
+
 # Advice
 
 Have fun with mruby!
