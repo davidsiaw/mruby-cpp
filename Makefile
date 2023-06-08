@@ -45,7 +45,9 @@ ifeq ($(LEAKCHECK), 1)
 endif
 	@echo "TESTING $(@:$(LOG_DIR)/test_%=test_%)"
 	@$(BIN_DIR)/$(@:$(LOG_DIR)/test_%=test_%) 1> $@/test.stdout 2> $@/test.stderr; echo "$$?" > $@/test.retcode
-	@mv *.gc* $(LOG_DIR)
+	@if compgen -G "*.gc*" > /dev/null; then \
+	    mv *.gc* $(LOG_DIR); \
+	fi; \
 
 all_tests: $(ALL_TEST_RESULTS)
 
