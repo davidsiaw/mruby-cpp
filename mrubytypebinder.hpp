@@ -13,7 +13,7 @@ struct TypeBinder<RClass*>
 {
 	static mrb_value to_mrb_value(mrb_state* mrb, RClass* cls)
 	{
-		return mrb_class_find_path(mrb, cls);
+		return mrb_class_path(mrb, cls);
 	}
 	static RClass* from_mrb_value(mrb_state* mrb, mrb_value val)
 	{

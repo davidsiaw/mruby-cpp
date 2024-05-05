@@ -15,6 +15,14 @@
 		mrb_exc_raise(mrb, exc); \
 		return mrb_nil_value();	// This should never run because raise jumps away
 
+// additional prototypes for some internalized functions
+// strangely enough their corresponding set functions are still external?
+// can remove when we know what the replacements should be
+extern "C" {
+	MRB_API mrb_value mrb_mod_cv_get(mrb_state *mrb, struct RClass *c, mrb_sym sym);
+	MRB_API mrb_value mrb_vm_const_get(mrb_state *mrb, mrb_sym sym);
+}
+
 template<class TClass>
 class Class;
 
@@ -233,18 +241,19 @@ public:
 	bool thing_is_defined(const std::string& name, mrb_vtype type)
 	{
 		mrb_sym name_sym = mrb_intern_cstr(mrb.get(), name.c_str());
-		if (cls == nullptr)
+		mrb_value module_object = mrb_obj_value(mrb->object_class);
+		if (cls != nullptr)
 		{
-			mrb_value val = mrb_vm_const_get(mrb.get(), name_sym);
-			return mrb_type(val) == type;
+			module_object = mrb_obj_value(cls);
 		}
-		bool is_defined = mrb_const_defined(mrb.get(), mrb_obj_value(cls), name_sym) == 1;
-		if (is_defined)
+
+		if(mrb_const_defined(mrb.get(), module_object, name_sym) == 0)
 		{
-			mrb_value val = mrb_const_get(mrb.get(), mrb_obj_value(cls), name_sym);
-			return mrb_type(val) == type;
+			return false;
 		}
-		return false;
+
+		mrb_value val = mrb_const_get(mrb.get(), module_object, name_sym);
+		return mrb_type(val) == type;
 	}
 
 	std::shared_ptr<Module> get_class(const std::string& name)
