@@ -1,12 +1,12 @@
 CC := g++
-CFLAGS := -std=c++11 -I. -I./mruby/include -Wall -fprofile-arcs -ftest-coverage
-LDFLAGS := -Lmruby/build/host/lib/ -lmruby
 TEST_DIR := tests
 BIN_DIR := bins
 LOG_DIR := logs
 OBJ_DIR := objs
 LIBMRUBY := mruby/build/host/lib/libmruby.a
 SHELL := bash
+CFLAGS := -std=c++11 -I. -I./mruby/include -Wall -fprofile-arcs -ftest-coverage
+LDFLAGS := -Lmruby/build/host/lib/ -lmruby
 
 SOURCES := $(wildcard *.hpp)
 TESTS := $(wildcard $(TEST_DIR)/*.cpp)
@@ -40,14 +40,22 @@ $(LOG_DIR)/test_%: $(BIN_DIR)/test_%
 	@touch $@
 ifeq ($(LEAKCHECK), 1)
 	@echo "LEAKCHK $(@:$(LOG_DIR)/test_%=test_%)"
-	@valgrind --error-exitcode=1 --leak-check=full --log-file=$@/valgrind.log $(BIN_DIR)/$(@:$(LOG_DIR)/%=%) 1> $@/valgrind.stdout 2> $@/valgrind.stderr; echo "$$?" > $@/valgrind.retcode
-	@mv $(@:$(LOG_DIR)/test_%=%).gc* $(LOG_DIR)
+	valgrind --error-exitcode=1 --leak-check=full --log-file=$@/valgrind.log $(BIN_DIR)/$(@:$(LOG_DIR)/%=%) \
+		1> $@/valgrind.stdout \
+		2> $@/valgrind.stderr; \
+		echo "$$?" > $@/valgrind.retcode
 endif
 	@echo "TESTING $(@:$(LOG_DIR)/test_%=test_%)"
-	@$(BIN_DIR)/$(@:$(LOG_DIR)/test_%=test_%) 1> $@/test.stdout 2> $@/test.stderr; echo "$$?" > $@/test.retcode
+	$(BIN_DIR)/$(@:$(LOG_DIR)/test_%=test_%) \
+		1> $@/test.stdout \
+		2> $@/test.stderr; \
+		echo "$$?" > $@/test.retcode
+	@if compgen -G "bins/*.gc*" > /dev/null; then \
+	    mv bins/*.gc* $(LOG_DIR); \
+	fi;
 	@if compgen -G "*.gc*" > /dev/null; then \
 	    mv *.gc* $(LOG_DIR); \
-	fi; \
+	fi;
 
 all_tests: $(ALL_TEST_RESULTS)
 
