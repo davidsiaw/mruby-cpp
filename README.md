@@ -2,6 +2,10 @@
 
 This is a header-only wrapper over mruby. You still need to pull mruby into your project. That is not covered in this README.
 
+## Coverage Report
+
+You can see the Coverage report at https://labs.astrobunny.io/mruby-cpp
+
 ## This repo has been moved to gitlab.astrobunny.net
 
 Contributors please change your upstream to
