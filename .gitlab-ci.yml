@@ -40,6 +40,7 @@ pages:
     - mkdir .public
     - cp coverage.html .public/index.html
     - cp coverage.* .public
+    - du -h .public
     - mv .public public
   artifacts:
     paths:
