@@ -2,6 +2,11 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
 image: ruby:alpine
+before_script:
+  - ruby -v
+  - apk update
+  - apk add bash build-base bison git curl valgrind gcovr
+  - which ruby
 
 test:
   variables:
@@ -11,11 +16,6 @@ test:
     NORMAL_TEXT: "\e[0m"
   tags:
     - cpp
-  before_script:
-    - ruby -v
-    - apk update
-    - apk add bash build-base bison git curl valgrind gcovr
-    - which ruby
   script:
     - LEAKCHECK=1 make
     - gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml --root ${CI_PROJECT_DIR}
@@ -28,15 +28,13 @@ test:
         path: coverage.xml
 
 pages:
-  image: python
   tags:
     - cpp
   stage: deploy
-  before_script:
-    - python -V
-    - pip -V
-    - which python
   script:
+    - apk add py3-pip
+    - python -m venv .
+    - . bin/activate
     - pip install gcovr
     - make coverage
     - mkdir .public
