@@ -107,7 +107,7 @@ gcov.log: all_tests
 	@mv *.gcov $(LOG_DIR)
 
 coverage: gcov.log
-	gcovr --html --exclude-unreachable-branches --print-summary -o coverage.html --root .
+	gcovr --html-details --html-self-contained --html-theme github.dark-blue --exclude-unreachable-branches --print-summary -o coverage.html --root . --exclude='tests/'
 
 test: summary
 	@if [ -f fail ]; then echo "Test failures detected!"; exit 1; fi

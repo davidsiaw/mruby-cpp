@@ -29,13 +29,16 @@ test:
         path: coverage.xml
 
 pages:
+  image: python
   tags:
     - cpp
   stage: deploy
   script:
+    - pip install gcovr
     - make coverage
     - mkdir .public
     - cp coverage.html .public/index.html
+    - cp coverage.* .public
     - mv .public public
   artifacts:
     paths:
